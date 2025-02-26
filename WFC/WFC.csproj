@@ -1,0 +1,73 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net8.0-windows</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <UseWPF>true</UseWPF>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Folder Include="Views\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.2" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Resources\building_center_E.png" />
+      <None Remove="Resources\building_dark_center_door_E.png" />
+      <None Remove="Resources\building_dark_center_door_N.png" />
+      <None Remove="Resources\building_dark_center_windows_E.png" />
+      <None Remove="Resources\building_dark_sides_door_E.png" />
+      <None Remove="Resources\building_dark_sides_door_N.png" />
+      <None Remove="Resources\building_dark_sides_E.png" />
+      <None Remove="Resources\grass_river_E.png" />
+      <None Remove="Resources\grass_river_N.png" />
+      <None Remove="Resources\grass_river_S.png" />
+      <None Remove="Resources\grass_river_W.png" />
+      <None Remove="Resources\grass_riverBend_E.png" />
+      <None Remove="Resources\grass_riverBend_N.png" />
+      <None Remove="Resources\grass_riverBend_S.png" />
+      <None Remove="Resources\grass_riverBend_W.png" />
+      <None Remove="Resources\grass_riverBridge_E.png" />
+      <None Remove="Resources\grass_riverBridge_N.png" />
+      <None Remove="Resources\grass_riverBridge_S.png" />
+      <None Remove="Resources\grass_riverBridge_W.png" />
+      <None Remove="Resources\grass_riverCorner_E.png" />
+      <None Remove="Resources\grass_riverCorner_N.png" />
+      <None Remove="Resources\grass_riverCorner_S.png" />
+      <None Remove="Resources\grass_riverCorner_W.png" />
+      <None Remove="Resources\grass_riverCrossing_E.png" />
+      <None Remove="Resources\grass_riverCrossing_N.png" />
+      <None Remove="Resources\grass_riverCrossing_S.png" />
+      <None Remove="Resources\grass_riverCrossing_W.png" />
+      <None Remove="Resources\grass_riverEnd_E.png" />
+      <None Remove="Resources\grass_riverEnd_N.png" />
+      <None Remove="Resources\grass_riverEnd_S.png" />
+      <None Remove="Resources\grass_riverEnd_W.png" />
+      <None Remove="Resources\grass_riverEndSquare_E.png" />
+      <None Remove="Resources\grass_riverEndSquare_N.png" />
+      <None Remove="Resources\grass_riverEndSquare_S.png" />
+      <None Remove="Resources\grass_riverEndSquare_W.png" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Resources\grass_waterConcave_W.png" />
+      <Resource Include="Resources\grass_waterConcave_W.png">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </Resource>
+      <None Remove="Resources\water_center_E.png" />
+      <Resource Include="Resources\water_center_e.png">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </Resource>
+      <None Remove="Resources\grass_center_E.png" />
+      <Resource Include="Resources\grass_center_e.png">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </Resource>
+    </ItemGroup>
+
+</Project>

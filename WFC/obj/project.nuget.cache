@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "s/renDwMJfAIIuuE7sO7+wERC64COMuuZEkFa4WV4MhZ25p5JTtOGmjYjsy8c3jG/MHZWjnkfzaRP8VPYzFOOA==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Admin\\RiderProjects\\WFC\\WFC\\WFC.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Admin\\.nuget\\packages\\communitytoolkit.mvvm\\8.4.0\\communitytoolkit.mvvm.8.4.0.nupkg.sha512",
+    "C:\\Users\\Admin\\.nuget\\packages\\microsoft.extensions.dependencyinjection\\9.0.2\\microsoft.extensions.dependencyinjection.9.0.2.nupkg.sha512",
+    "C:\\Users\\Admin\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\9.0.2\\microsoft.extensions.dependencyinjection.abstractions.9.0.2.nupkg.sha512"
+  ],
+  "logs": []
+}

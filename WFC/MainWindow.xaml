@@ -1,0 +1,103 @@
+﻿<Window x:Class="WFC.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="WFC Generator" Height="450" Width="800">
+    
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="250"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- WFC Grid Area -->
+        <Border Grid.Column="0" 
+                BorderBrush="Gray" 
+                BorderThickness="1" 
+                Margin="20">
+            <ItemsControl ItemsSource="{Binding GridTiles}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemContainerStyle>
+                    <Style TargetType="ContentPresenter">
+                        <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                        <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Image Source="{Binding Image}" 
+                               Width="100" 
+                               Height="86"
+                               RenderOptions.BitmapScalingMode="NearestNeighbor"
+                               Margin="-10"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+
+        <!-- Control Panel -->
+        <StackPanel Grid.Column="1" Margin="10">
+            <Button Content="Generate" 
+                    Command="{Binding GenerateCommand}"
+                    Height="30" 
+                    Margin="0,0,0,10"/>
+            
+            <Button Content="Cancel" 
+                    Command="{Binding CancelCommand}"
+                    Height="30" 
+                    Margin="0,0,0,10"/>
+            
+            <Button Content="Reset" 
+                    Command="{Binding ResetCommand}"
+                    Height="30" 
+                    Margin="0,0,0,10"/>
+
+            <ProgressBar Value="{Binding Progress}" 
+                        Height="20" 
+                        Margin="0,0,0,10"/>
+            
+            <TextBlock Text="{Binding Status}" 
+                      TextWrapping="Wrap"
+                      Margin="0,0,0,20"/>
+
+            <!-- Settings -->
+            <GroupBox Header="Settings" Margin="0,0,0,10">
+                <StackPanel Margin="5">
+                    <TextBlock Text="Grid Size"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,5">
+                        <TextBox Text="{Binding GridWidth}" Width="50"/>
+                        <TextBlock Text=" x " Margin="5,0"/>
+                        <TextBox Text="{Binding GridHeight}" Width="50"/>
+                    </StackPanel>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Available Tiles -->
+            <GroupBox Header="Available Tiles">
+                <ListBox ItemsSource="{Binding Tiles}" 
+                         Height="150"
+                         Margin="5">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <Image Source="{Binding Image}" 
+                                       Width="32" 
+                                       Height="32" 
+                                       RenderOptions.BitmapScalingMode="NearestNeighbor"
+                                       Margin="0,0,5,0"/>
+                                <TextBlock Text="{Binding Name}" 
+                                          VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </GroupBox>
+        </StackPanel>
+    </Grid>
+</Window>
