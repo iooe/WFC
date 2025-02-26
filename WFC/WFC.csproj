@@ -68,6 +68,10 @@
       <Resource Include="Resources\grass_center_e.png">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </Resource>
+      <None Remove="Resources\grass_waterConcave_E.png" />
+      <Resource Include="Resources\grass_waterConcave_E.png">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </Resource>
     </ItemGroup>
 
 </Project>

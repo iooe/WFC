@@ -1,14 +1,12 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Input;
-using System.Windows.Media;
 using CommunityToolkit.Mvvm.Input;
 using WFC.Models;
 using WFC.Services;
 
 namespace WFC.ViewModels;
 
-// ViewModels/MainViewModel.cs
 public class MainViewModel : INotifyPropertyChanged
 {
     private readonly IWFCService _wfcService;
@@ -20,7 +18,6 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand GenerateCommand { get; }
     public ICommand CancelCommand { get; }
     public ICommand ResetCommand { get; }
-
 
     private float _progress;
 
@@ -46,7 +43,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    private int _gridWidth = 5;
+    private int _gridWidth = 10;
 
     public int GridWidth
     {
@@ -58,7 +55,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    private int _gridHeight = 5;
+    private int _gridHeight = 10;
 
     public int GridHeight
     {
@@ -70,8 +67,8 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-// Изменяем тип коллекции для отображения
     private ObservableCollection<TileDisplay> _gridTiles;
+
     public ObservableCollection<TileDisplay> GridTiles
     {
         get => _gridTiles;
@@ -82,7 +79,6 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    // Оставляем коллекцию для доступных тайлов
     public ObservableCollection<Tile> Tiles { get; }
 
     public MainViewModel(IWFCService wfcService)
@@ -92,7 +88,7 @@ public class MainViewModel : INotifyPropertyChanged
         _wfcService.ProgressChanged += OnProgressChanged;
 
         Tiles = new ObservableCollection<Tile>();
-        GridTiles = new ObservableCollection<TileDisplay>();  // Инициализируем новую коллекцию
+        GridTiles = new ObservableCollection<TileDisplay>();
         GenerateCommand = new AsyncRelayCommand(GenerateAsync);
         CancelCommand = new RelayCommand(Cancel);
         ResetCommand = new RelayCommand(Reset);
@@ -102,119 +98,300 @@ public class MainViewModel : INotifyPropertyChanged
 
     private void InitializeDefaultTiles()
     {
-        // Здания основные
-        Tiles.Add(new Tile(0, "Water Full", "water_center_e.png"));
-        Tiles.Add(new Tile(1, "Earth", "grass_center_e.png"));
-        Tiles.Add(new Tile(2, "Water To Shore", "grass_waterConcave_W.png")); // тайл с водой слева и берегом справа
-
-    }
-
-    private void AddDefaultRules(WFCSettings settings)
-    {
-        settings.Rules.Clear();
-
-        // Земля (0) может соединяться с землей или водой
-        AddRule(settings, 0, "right", new[] { (0, 0.7f), (1, 0.3f) });
-        AddRule(settings, 0, "right", new[] { (0, 0.5f), (1, 0.2f), (2, 0.3f) });
-        AddRule(settings, 0, "up", new[] { (0, 0.7f), (1, 0.3f) });
-        AddRule(settings, 0, "down", new[] { (0, 0.7f), (1, 0.3f) });
-
-        // Вода (1) может соединяться с водой или землей
-        AddRule(settings, 1, "right", new[] { (1, 0.7f), (0, 0.3f) });
-        AddRule(settings, 1, "left", new[] { (1, 0.5f), (0, 0.2f), (2, 0.3f) });
-        AddRule(settings, 1, "up", new[] { (1, 0.7f), (0, 0.3f) });
-        AddRule(settings, 1, "down", new[] { (1, 0.7f), (0, 0.3f) });
-        
-        // Тайл 2 (земля слева, вода справа)
-        AddRule(settings, 2, "left", new[] { (0, 1.0f) }); // Слева разрешена только земля
-        AddRule(settings, 2, "right", new[] { (1, 1.0f) }); // Справа разрешена только вода
-        AddRule(settings, 2, "up", new[] { (0, 0.5f), (1, 0.5f) }); // Вертикальные связи (пример)
-        AddRule(settings, 2, "down", new[] { (0, 0.5f), (1, 0.5f) });
-    }
-    private void AddRule(WFCSettings settings, int fromState, string direction,
-        (int state, float weight)[] possibleStates)
-    {
-        var key = (fromState, direction);
-        settings.Rules[key] = possibleStates.ToList();
+        // Using constants instead of hardcoded IDs
+        Tiles.Add(new Tile(TileTypes.EARTH, "Earth", "grass_center_e.png"));
+        Tiles.Add(new Tile(TileTypes.WATER, "Water Full", "water_center_e.png"));
+        Tiles.Add(new Tile(TileTypes.SHORE_LEFT_WATER_RIGHT, "Shore Left Water Right", "grass_waterConcave_W.png"));
+        Tiles.Add(new Tile(TileTypes.SHORE_RIGHT_WATER_LEFT, "Shore Right Water Left", "grass_waterConcave_E.png"));
     }
 
     private async Task GenerateAsync()
     {
-        _cancellationTokenSource = new CancellationTokenSource();
-
-        var settings = new WFCSettings
-        {
-            Width = GridWidth,
-            Height = GridHeight,
-            Tiles = Tiles.ToList()
-        };
-
-        AddDefaultRules(settings);
-
         try
         {
-            Status = "Generating...";
-            bool generationSuccessful = false;
-            int attempts = 0;
+            // Clear any previous generation
+            Reset();
+            
+            // Create a new cancellation token source
+            _cancellationTokenSource = new CancellationTokenSource();
 
-            while (!generationSuccessful && attempts < 300)
+            // Limit grid size to prevent hanging
+            int safeGridWidth = Math.Min(GridWidth, 12);
+            int safeGridHeight = Math.Min(GridHeight, 12);
+
+            if (safeGridWidth != GridWidth || safeGridHeight != GridHeight)
             {
-                attempts++;
-                Status = $"Generating... (Attempt {attempts}/20)";
+                GridWidth = safeGridWidth;
+                GridHeight = safeGridHeight;
+                Status = $"Grid size limited to {safeGridWidth}x{safeGridHeight} for stability";
+                // Tiny delay to allow status to update
+                await Task.Delay(10);
+            }
 
-                var result = await _wfcService.GenerateAsync(settings, _cancellationTokenSource.Token);
+            var settings = new WFCSettings
+            {
+                Width = safeGridWidth,
+                Height = safeGridHeight,
+                Tiles = Tiles.ToList()
+            };
 
-                if (result.Success)
+            // Generate rules for tile connections
+            RuleGenerator.GenerateRules(settings);
+
+            Status = "Starting generation...";
+            await Task.Delay(10); // Allow UI to update
+
+            // Try multiple times with different random seeds if needed
+            const int maxGenerationAttempts = 3;
+            bool success = false;
+            WFCResult result = null;
+
+            for (int attempt = 1; attempt <= maxGenerationAttempts && !success; attempt++)
+            {
+                try
                 {
-                    UpdateGridDisplay(result.Grid);
-                    Status = "Generation completed successfully";
-                    generationSuccessful = true;
+                    Status = $"Generation attempt {attempt}/{maxGenerationAttempts}...";
+
+                    // Set a reasonable timeout
+                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+                    using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                        _cancellationTokenSource.Token, timeoutCts.Token);
+
+                    // Run the WFC algorithm
+                    result = await _wfcService.GenerateAsync(settings, combinedCts.Token);
+                    
+                    // Check if generation was successful
+                    if (result.Success && result.Grid != null)
+                    {
+                        success = true;
+                    }
+                    else if (result.Grid != null)
+                    {
+                        // If we have a partial result, count it as success
+                        if (CountFilledCells(result.Grid) >= safeGridWidth * safeGridHeight * 0.9)
+                        {
+                            success = true;
+                        }
+                    }
                 }
-                else if (attempts >= 20)
+                catch (OperationCanceledException)
                 {
-                    Status = $"Failed after 20 attempts. Last error: {result.ErrorMessage}";
+                    // If cancelled by user, exit loop
+                    if (_cancellationTokenSource.IsCancellationRequested)
+                    {
+                        Status = "Generation cancelled";
+                        return;
+                    }
+                    
+                    // If timed out, try again
+                    Status = $"Attempt {attempt} timed out, trying again...";
+                    await Task.Delay(10);
                 }
             }
 
-            if (!generationSuccessful)
+            // Display the generated map if successful
+            if (success && result?.Grid != null)
             {
-                Status = "Generation failed after 10 attempts";
+                UpdateGridDisplay(result.Grid);
+                Status = "Generation completed with WFC algorithm";
+            }
+            else
+            {
+                // No viable map was generated after all attempts, create a truly random one
+                Status = "Creating random map...";
+                CreateRandomMap(safeGridWidth, safeGridHeight);
             }
         }
         catch (Exception ex)
         {
-            Status = $"Unexpected error: {ex.Message}";
+            Status = $"Error: {ex.Message}";
         }
     }
 
-    private void UpdateGridDisplay(Tile[,] grid)
+    // Count how many cells in the grid are filled
+    private int CountFilledCells(Tile[,] grid)
+    {
+        int filled = 0;
+        for (int x = 0; x < grid.GetLength(0); x++)
+        {
+            for (int y = 0; y < grid.GetLength(1); y++)
+            {
+                if (grid[x, y] != null)
+                {
+                    filled++;
+                }
+            }
+        }
+        return filled;
+    }
+
+    // Create a truly random map without any patterns
+    private void CreateRandomMap(int width, int height)
     {
         GridTiles.Clear();
-    
-        // Константы для гексагональной сетки
-        double hexWidth = 100;      
-        double hexHeight = 100;    
-        double horizontalDistance = hexWidth * 0.53;  // Было 0.75, уменьшили
-        double verticalDistance = hexHeight * 0.4;   // Было 0.87, уменьшили
 
-        for (int y = 0; y < GridHeight; y++)
+        double hexWidth = 100;
+        double hexHeight = 86;
+        double horizontalDistance = hexWidth * 0.75;
+        double verticalDistance = hexHeight * 0.87;
+
+        // First create a completely random map
+        int[,] tileTypes = new int[width, height];
+        
+        // Generate random terrain with cellular automata
+        // First fill with random water/land
+        for (int x = 0; x < width; x++)
         {
-            for (int x = 0; x < GridWidth; x++)
+            for (int y = 0; y < height; y++)
             {
-                var tile = grid[x, y] ?? Tiles[0];
+                // Random distribution of land and water, with roughly 50/50 chance
+                tileTypes[x, y] = random.NextDouble() < 0.5 ? TileTypes.EARTH : TileTypes.WATER;
+            }
+        }
+        
+        // Run a few iterations of cellular automata for more natural terrain
+        for (int iteration = 0; iteration < 3; iteration++)
+        {
+            int[,] newTileTypes = new int[width, height];
             
-                // Вычисляем позицию для гексагональной сетки
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    // Count neighbors of each type
+                    double waterNeighbors = 0;
+                    double landNeighbors = 0;
+                    
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        for (int dy = -1; dy <= 1; dy++)
+                        {
+                            int nx = x + dx;
+                            int ny = y + dy;
+                            
+                            if (nx >= 0 && nx < width && ny >= 0 && ny < height)
+                            {
+                                if (tileTypes[nx, ny] == TileTypes.WATER)
+                                    waterNeighbors++;
+                                else if (tileTypes[nx, ny] == TileTypes.EARTH)
+                                    landNeighbors++;
+                            }
+                            else
+                            {
+                                // For edge cells, count outside as 50/50
+                                waterNeighbors += 0.5;
+                                landNeighbors += 0.5;
+                            }
+                        }
+                    }
+                    
+                    // Apply cellular automata rules
+                    if (tileTypes[x, y] == TileTypes.WATER)
+                    {
+                        // Water stays water if surrounded by mostly water
+                        newTileTypes[x, y] = waterNeighbors >= 4 ? TileTypes.WATER : TileTypes.EARTH;
+                    }
+                    else
+                    {
+                        // Land stays land if surrounded by mostly land
+                        newTileTypes[x, y] = landNeighbors >= 4 ? TileTypes.EARTH : TileTypes.WATER;
+                    }
+                }
+            }
+            
+            // Update tile types for next iteration
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    tileTypes[x, y] = newTileTypes[x, y];
+                }
+            }
+        }
+        
+        // Create shorelines where land meets water
+        int[,] finalTileTypes = new int[width, height];
+        
+        // First just copy the base types
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                finalTileTypes[x, y] = tileTypes[x, y];
+            }
+        }
+        
+        // Then add shores
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                // Only look at horizontal neighbors for shore placement
+                if (x > 0 && tileTypes[x, y] == TileTypes.EARTH && tileTypes[x-1, y] == TileTypes.WATER)
+                {
+                    // Earth with water to the left = Shore Right Water Left
+                    finalTileTypes[x, y] = TileTypes.SHORE_RIGHT_WATER_LEFT;
+                }
+                else if (x < width - 1 && tileTypes[x, y] == TileTypes.EARTH && tileTypes[x+1, y] == TileTypes.WATER)
+                {
+                    // Earth with water to the right = Shore Left Water Right
+                    finalTileTypes[x, y] = TileTypes.SHORE_LEFT_WATER_RIGHT;
+                }
+            }
+        }
+        
+        // Now render the final map
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                var tile = Tiles[finalTileTypes[x, y]];
+
                 double xPos = x * horizontalDistance;
                 double yPos = y * verticalDistance;
-            
-                // Смещаем четные ряды
+
                 if (y % 2 == 1)
                 {
                     xPos += horizontalDistance / 2;
                 }
 
-                GridTiles.Add(new TileDisplay 
-                { 
+                GridTiles.Add(new TileDisplay
+                {
+                    Image = tile.Image,
+                    X = (float)xPos,
+                    Y = (float)yPos
+                });
+            }
+        }
+
+        Status = "Created random procedural map";
+    }
+
+    private void UpdateGridDisplay(Tile[,] grid)
+    {
+        GridTiles.Clear();
+
+        double hexWidth = 100;
+        double hexHeight = 86;
+        double horizontalDistance = hexWidth * 0.75;
+        double verticalDistance = hexHeight * 0.87;
+
+        for (int y = 0; y < GridHeight; y++)
+        {
+            for (int x = 0; x < GridWidth; x++)
+            {
+                var tile = grid[x, y] ?? Tiles[0]; // Default to Earth if null
+
+                double xPos = x * horizontalDistance;
+                double yPos = y * verticalDistance;
+
+                if (y % 2 == 1)
+                {
+                    xPos += horizontalDistance / 2;
+                }
+
+                GridTiles.Add(new TileDisplay
+                {
                     Image = tile.Image,
                     X = (float)xPos,
                     Y = (float)yPos
@@ -222,6 +399,7 @@ public class MainViewModel : INotifyPropertyChanged
             }
         }
     }
+
     private void Cancel()
     {
         _cancellationTokenSource?.Cancel();
@@ -231,7 +409,7 @@ public class MainViewModel : INotifyPropertyChanged
     private void Reset()
     {
         _wfcService.Reset();
-        GridTiles.Clear();  // Очищаем коллекцию тайлов для отображения
+        GridTiles.Clear();
         Progress = 0;
         Status = "Ready";
     }

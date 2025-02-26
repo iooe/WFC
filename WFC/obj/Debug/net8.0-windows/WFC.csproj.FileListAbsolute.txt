@@ -22,3 +22,4 @@ C:\Users\Admin\RiderProjects\WFC\WFC\bin\Debug\net8.0-windows\Microsoft.Extensio
 C:\Users\Admin\RiderProjects\WFC\WFC\bin\Debug\net8.0-windows\Microsoft.Extensions.DependencyInjection.Abstractions.dll
 C:\Users\Admin\RiderProjects\WFC\WFC\obj\Debug\net8.0-windows\WFC.csproj.AssemblyReference.cache
 C:\Users\Admin\RiderProjects\WFC\WFC\obj\Debug\net8.0-windows\WFC.csproj.Up2Date
+C:\Users\Admin\RiderProjects\WFC\WFC\obj\Debug\net8.0-windows\WFC.sourcelink.json
