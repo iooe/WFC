@@ -4,6 +4,15 @@ using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
 using WFC.Models;
 using WFC.Services;
+using System.IO;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using WFC.Helpers;
+using Application = System.Windows.Application;
+using Image = System.Windows.Controls.Image;
+using Size = System.Windows.Size;
 
 namespace WFC.ViewModels;
 
@@ -94,7 +103,16 @@ public class MainViewModel : INotifyPropertyChanged
         ResetCommand = new RelayCommand(Reset);
 
         InitializeDefaultTiles();
+
+
+// Initialize these commands in the constructor:
+        ExportAsPngCommand = new AsyncRelayCommand(ExportAsPngAsync);
+        ExportAsTilesCommand = new AsyncRelayCommand(ExportAsTilesAsync);
     }
+
+    // Add these properties to your MainViewModel class
+    public ICommand ExportAsPngCommand { get; }
+    public ICommand ExportAsTilesCommand { get; }
 
     private Tile[,] PostProcessGrid(Tile[,] grid, int width, int height)
     {
@@ -295,5 +313,188 @@ public class MainViewModel : INotifyPropertyChanged
     protected virtual void OnPropertyChanged(string propertyName)
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+
+    // Improved export as PNG method (add to MainViewModel)
+    private async Task ExportAsPngAsync()
+    {
+        try
+        {
+            // Use SaveFileDialog to get output filename
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title = "Export map as PNG",
+                Filter = "PNG Image|*.png",
+                DefaultExt = ".png",
+                FileName = $"WFC_Map_{DateTime.Now:yyyyMMdd_HHmmss}"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                Status = "Exporting map as PNG...";
+                await Task.Delay(10); // Allow UI to update
+
+                // Get a reference to the main grid container (using a method in MainWindow)
+                var mainWindow = Application.Current.MainWindow as MainWindow;
+                if (mainWindow == null)
+                {
+                    Status = "Error: Cannot access the main window";
+                    return;
+                }
+
+                // Get a reference to the Canvas or ItemsControl that contains all tiles
+                var tileContainer = mainWindow.GetTileContainer();
+                if (tileContainer == null)
+                {
+                    Status = "Error: Cannot find the tile container";
+                    return;
+                }
+
+                // Calculate the exact dimensions needed
+                int width = GridWidth * 100;
+                int height = GridHeight * 100;
+
+                // Create a Canvas specifically for export
+                var exportCanvas = new Canvas { Width = width, Height = height };
+
+                // For each tile position, create and position an image
+                foreach (var tile in GridTiles)
+                {
+                    // Create new image for each tile
+                    var img = new Image
+                    {
+                        Source = tile.Image,
+                        Width = 100,
+                        Height = 100
+                    };
+
+                    // Position it correctly
+                    Canvas.SetLeft(img, tile.X);
+                    Canvas.SetTop(img, tile.Y);
+
+                    // Add to our export canvas
+                    exportCanvas.Children.Add(img);
+                }
+
+                // Use the helper to capture and save
+                VisualHelper.CaptureElementToPng(exportCanvas, dialog.FileName, width, height);
+
+                Status = $"Map exported as PNG to {dialog.FileName}";
+            }
+        }
+        catch (Exception ex)
+        {
+            Status = $"Error exporting map: {ex.Message}";
+        }
+    }
+
+    // Use this instead of the Windows.Forms FolderBrowserDialog
+    private string GetFolderPath(string description)
+    {
+        // Since WPF doesn't have a built-in folder picker, we'll use the 
+        // SaveFileDialog with a workaround to select folders
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = description,
+            Filter = "Folder|*.folder", // Not actually used
+            FileName = "Select Folder" // Initial filename
+        };
+
+        // Event to handle when dialog is shown
+        dialog.FileOk += (sender, e) =>
+        {
+            e.Cancel = true; // Always cancel actual file selection
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            // Get the selected path but remove the filename portion
+            return Path.GetDirectoryName(dialog.FileName);
+        }
+
+        return null;
+    }
+
+// Improved export as individual tiles method (add to MainViewModel)
+// Improved export as individual tiles method (add to MainViewModel)
+    private async Task ExportAsTilesAsync()
+    {
+        try
+        {
+            // Use FolderBrowserDialog to get output directory
+            var dialog = new System.Windows.Forms.FolderBrowserDialog
+            {
+                Description = "Select folder to export tiles",
+                UseDescriptionForTitle = true
+            };
+
+            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                Status = "Exporting tiles...";
+                await Task.Delay(10); // Allow UI to update
+
+                string folderPath = dialog.SelectedPath;
+
+                // Create a subdirectory with timestamp
+                string subfolder = $"WFC_Tiles_{DateTime.Now:yyyyMMdd_HHmmss}";
+                string fullPath = Path.Combine(folderPath, subfolder);
+                Directory.CreateDirectory(fullPath);
+
+                // Export each tile as an individual image
+                int count = 0;
+                for (int y = 0; y < GridHeight; y++)
+                {
+                    for (int x = 0; x < GridWidth; x++)
+                    {
+                        // Find the tile at this position
+                        var tile = GridTiles.FirstOrDefault(t =>
+                            Math.Abs(t.X - (x * 100)) < 0.1 &&
+                            Math.Abs(t.Y - (y * 100)) < 0.1);
+
+                        if (tile != null)
+                        {
+                            // Create a filename based on coordinates
+                            string filename = Path.Combine(fullPath, $"tile_x{x}_y{y}.png");
+
+                            // Create a small canvas with just this tile
+                            var canvas = new Canvas { Width = 100, Height = 100 };
+                            var image = new Image
+                            {
+                                Source = tile.Image,
+                                Width = 100,
+                                Height = 100
+                            };
+                            canvas.Children.Add(image);
+
+                            // Measure and arrange the canvas
+                            canvas.Measure(new Size(100, 100));
+                            canvas.Arrange(new Rect(0, 0, 100, 100));
+
+                            // Create a RenderTargetBitmap
+                            var renderBitmap = new RenderTargetBitmap(100, 100, 96, 96, PixelFormats.Pbgra32);
+                            renderBitmap.Render(canvas);
+
+                            // Save as PNG
+                            BitmapEncoder encoder = new PngBitmapEncoder();
+                            encoder.Frames.Add(BitmapFrame.Create(renderBitmap));
+
+                            using (var stream = new FileStream(filename, FileMode.Create))
+                            {
+                                encoder.Save(stream);
+                            }
+
+                            count++;
+                        }
+                    }
+                }
+
+                Status = $"Exported {count} tiles to {fullPath}";
+            }
+        }
+        catch (Exception ex)
+        {
+            Status = $"Error exporting tiles: {ex.Message}";
+        }
     }
 }

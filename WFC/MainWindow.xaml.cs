@@ -12,7 +12,14 @@ namespace WFC
         {
             InitializeComponent();
         }
-
+// Add this method to MainWindow.xaml.cs
+        public UIElement GetTileContainer()
+        {
+            // Return the Canvas that contains all the tiles
+            // You may need to adjust this depending on your exact XAML structure
+            return GridContainer; // This is the Border that contains the Viewbox
+        }
+        
         // Constructor that accepts a view model
         public MainWindow(MainViewModel viewModel)
         {

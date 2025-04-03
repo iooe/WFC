@@ -68,6 +68,20 @@
                     Command="{Binding ResetCommand}"
                     Height="30" 
                     Margin="0,0,0,10"/>
+            
+            <GroupBox Header="Export" Margin="0,0,0,10">
+                <StackPanel Margin="5">
+                    <Button Content="Export as PNG" 
+                            Command="{Binding ExportAsPngCommand}"
+                            Height="30" 
+                            Margin="0,5,0,5"/>
+        
+                    <Button Content="Export as Tiles" 
+                            Command="{Binding ExportAsTilesCommand}"
+                            Height="30" 
+                            Margin="0,0,0,5"/>
+                </StackPanel>
+            </GroupBox>
 
             <ProgressBar Value="{Binding Progress}" 
                         Height="20" 

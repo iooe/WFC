@@ -2,6 +2,10 @@
 using System.Windows.Media.Imaging;
 using System.IO;
 using System.Windows;
+using Brushes = System.Windows.Media.Brushes;
+using Color = System.Windows.Media.Color;
+using FlowDirection = System.Windows.FlowDirection;
+using Point = System.Windows.Point;
 
 public class Tile
 {

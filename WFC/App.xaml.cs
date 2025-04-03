@@ -2,6 +2,7 @@
 using System.Windows;
 using WFC.Services;
 using WFC.ViewModels;
+using Application = System.Windows.Application;
 
 namespace WFC
 {
