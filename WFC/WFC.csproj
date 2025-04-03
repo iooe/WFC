@@ -9,6 +9,14 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <Folder Include="Resources\pavement-transitions\bottom-left\" />
+      <Folder Include="Resources\pavement-transitions\bottom-right\" />
+      <Folder Include="Resources\pavement-transitions\bottom\" />
+      <Folder Include="Resources\pavement-transitions\left\" />
+      <Folder Include="Resources\pavement-transitions\right\" />
+      <Folder Include="Resources\pavement-transitions\top-left\" />
+      <Folder Include="Resources\pavement-transitions\top-right\" />
+      <Folder Include="Resources\pavement-transitions\top\" />
       <Folder Include="Views\" />
     </ItemGroup>
 

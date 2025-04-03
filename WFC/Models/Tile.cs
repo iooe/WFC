@@ -11,7 +11,9 @@ public class Tile
     public string Name { get; }
     public ImageSource Image { get; private set; }
     public string FolderPath { get; }
-    public string CurrentImagePath { get; private set; }
+    
+    // Keep track of all images in the folder
+    private List<string> availableImages;
     
     // Constructor for specifying a folder path
     public Tile(int id, string name, string folderPath)
@@ -20,172 +22,112 @@ public class Tile
         Name = name;
         FolderPath = folderPath;
         
-        // Load a random image from the folder
+        // Find all available images in the folder
+        FindAvailableImages();
+        
+        // Load an initial random image
         LoadRandomImage();
     }
     
-    // Constructor for a specific image file
-    public Tile(int id, string name, string imagePath, bool isSpecificFile)
+    // Find all available images in the folder
+    private void FindAvailableImages()
     {
-        Id = id;
-        Name = name;
+        availableImages = new List<string>();
         
-        if (isSpecificFile)
-        {
-            FolderPath = Path.GetDirectoryName(imagePath) ?? "";
-            CurrentImagePath = imagePath;
-            LoadSpecificImage(imagePath);
-        }
-        else
-        {
-            FolderPath = imagePath;
-            LoadRandomImage();
-        }
-    }
-    
-    // Load a random image from the folder
-    public void LoadRandomImage()
-    {
         try
         {
             // Check if we're running in development or deployed environment
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
             string resourcesPath = Path.Combine(baseDir, "Resources", FolderPath);
             
-            // Debug: Log the path we're looking in
-            Console.WriteLine($"Looking for images in: {resourcesPath}");
-            
             // Check if directory exists
             if (!Directory.Exists(resourcesPath))
             {
                 Console.WriteLine($"Directory not found: {resourcesPath}");
-                CreateFallbackImageInMemory();
                 return;
             }
             
-            // Debug: List all files in the directory
-            Console.WriteLine($"Files in directory {resourcesPath}:");
+            // Get all image files with appropriate extensions
+            var imageExtensions = new[] { ".png", ".jpg", ".jpeg" };
+            
             foreach (var file in Directory.GetFiles(resourcesPath))
             {
-                Console.WriteLine($"  - {Path.GetFileName(file)}");
+                string extension = Path.GetExtension(file).ToLowerInvariant();
+                if (imageExtensions.Contains(extension))
+                {
+                    availableImages.Add(file);
+                }
             }
             
-            // Get all image files in the directory with proper extension handling
-            var imageFiles = Directory.GetFiles(resourcesPath)
-                .Where(f => {
-                    string ext = Path.GetExtension(f).ToLowerInvariant();
-                    return ext == ".png" || ext == ".jpg" || ext == ".jpeg";
-                })
-                .ToArray();
-                
-            if (imageFiles.Length == 0)
+            // If no images found, create default
+            if (availableImages.Count == 0)
             {
-                Console.WriteLine($"No image files found in: {resourcesPath}");
-                CreateFallbackImageInMemory();
-                return;
+                string defaultPath = Path.Combine(resourcesPath, "default.png");
+                if (File.Exists(defaultPath))
+                {
+                    availableImages.Add(defaultPath);
+                }
             }
             
-            // Select a random image file
-            string randomImageFile = imageFiles[random.Next(imageFiles.Length)];
-            Console.WriteLine($"Selected image: {randomImageFile}");
-            
-            // IMPORTANT: Use a more direct approach to load the image that handles spaces correctly
-            BitmapImage bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            
-            // Use this approach to handle spaces in file paths
-            using (var stream = new FileStream(randomImageFile, FileMode.Open, FileAccess.Read))
-            {
-                bitmap.StreamSource = stream.CloneStream();
-            }
-            
-            bitmap.EndInit();
-            bitmap.Freeze(); // Important for thread safety
-            
-            Image = bitmap;
-            CurrentImagePath = randomImageFile;
-            Console.WriteLine($"Successfully loaded image: {randomImageFile}");
+            Console.WriteLine($"Found {availableImages.Count} images in {resourcesPath}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading random image from folder {FolderPath}: {ex.Message}");
+            Console.WriteLine($"Error finding images in folder {FolderPath}: {ex.Message}");
+        }
+    }
+    
+    // Load a random image
+    public void LoadRandomImage()
+    {
+        // If we have no images or need to refresh the list
+        if (availableImages == null || availableImages.Count == 0)
+        {
+            FindAvailableImages();
+        }
+        
+        try
+        {
+            // Choose a random image from available ones
+            if (availableImages.Count > 0)
+            {
+                string randomImageFile = availableImages[random.Next(availableImages.Count)];
+                
+                // Load the image
+                BitmapImage bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                
+                // Use a FileStream approach to handle spaces correctly
+                using (var stream = new FileStream(randomImageFile, FileMode.Open, FileAccess.Read))
+                {
+                    // Create a memory stream to copy the file stream
+                    MemoryStream memoryStream = new MemoryStream();
+                    stream.CopyTo(memoryStream);
+                    memoryStream.Position = 0;
+                    
+                    bitmap.StreamSource = memoryStream;
+                }
+                
+                bitmap.EndInit();
+                bitmap.Freeze(); // Ensure thread safety
+                
+                Image = bitmap;
+                Console.WriteLine($"Loaded random image: {randomImageFile}");
+            }
+            else
+            {
+                CreateFallbackImageInMemory();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading random image: {ex.Message}");
             CreateFallbackImageInMemory();
         }
     }
     
-    // Load a specific image
-    private void LoadSpecificImage(string imagePath)
-    {
-        try
-        {
-            // First, try to find the exact file in the Resources folder
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            string fullPath = Path.Combine(baseDir, "Resources", FolderPath, imagePath);
-            
-            // Debug: Log the file we're looking for
-            Console.WriteLine($"Looking for specific image at: {fullPath}");
-            
-            if (!File.Exists(fullPath))
-            {
-                // Try to find the file by name without worrying about extension
-                string directory = Path.Combine(baseDir, "Resources", FolderPath);
-                string nameWithoutExt = Path.GetFileNameWithoutExtension(imagePath);
-                
-                if (Directory.Exists(directory))
-                {
-                    // List all files and find a match by name
-                    var matchingFiles = Directory.GetFiles(directory)
-                        .Where(f => Path.GetFileNameWithoutExtension(f)
-                            .Equals(nameWithoutExt, StringComparison.OrdinalIgnoreCase))
-                        .ToArray();
-                        
-                    if (matchingFiles.Length > 0)
-                    {
-                        fullPath = matchingFiles[0];
-                        Console.WriteLine($"Found matching file: {fullPath}");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"No matching file found for: {nameWithoutExt}");
-                        LoadRandomImage();
-                        return;
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"Directory not found: {directory}");
-                    LoadRandomImage();
-                    return;
-                }
-            }
-            
-            // IMPORTANT: Use a more direct approach to load the image that handles spaces correctly
-            BitmapImage bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            
-            // Use this approach to handle spaces in file paths
-            using (var stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read))
-            {
-                bitmap.StreamSource = stream.CloneStream();
-            }
-            
-            bitmap.EndInit();
-            bitmap.Freeze(); // Important for thread safety
-            
-            Image = bitmap;
-            CurrentImagePath = fullPath;
-            Console.WriteLine($"Successfully loaded specific image: {fullPath}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading specific image {imagePath}: {ex.Message}");
-            LoadRandomImage();
-        }
-    }
-    
-    // Create a simple fallback image in memory
+    // Create a fallback image in memory
     private void CreateFallbackImageInMemory()
     {
         try
@@ -221,7 +163,7 @@ public class Tile
                 
                 // Add folder name as text
                 FormattedText formattedText = new FormattedText(
-                    FolderPath,
+                    Path.GetFileName(FolderPath),
                     System.Globalization.CultureInfo.CurrentCulture,
                     FlowDirection.LeftToRight,
                     new Typeface("Arial"),
@@ -241,7 +183,6 @@ public class Tile
             
             // Set the RenderTargetBitmap as the Image
             Image = renderTargetBitmap;
-            CurrentImagePath = "fallback-image";
             
             Console.WriteLine("Created fallback image in memory");
         }
@@ -250,7 +191,6 @@ public class Tile
             Console.WriteLine($"Error creating fallback image: {ex.Message}");
             // Absolute last resort - create a 1x1 pixel image
             Image = new WriteableBitmap(1, 1, 96, 96, PixelFormats.Bgra32, null);
-            CurrentImagePath = "1x1-pixel-fallback";
         }
     }
 }

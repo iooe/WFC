@@ -96,13 +96,65 @@ public class MainViewModel : INotifyPropertyChanged
         InitializeDefaultTiles();
     }
 
+    private Tile[,] PostProcessGrid(Tile[,] grid, int width, int height)
+    {
+        // First pass: identify grass and pavement boundaries
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                var currentTile = grid[x, y];
+                int currentId = currentTile.Id;
+
+                // Skip if already a transition tile
+                if (currentId >= TileTypes.PAVEMENT_GRASS_LEFT && currentId <= TileTypes.PAVEMENT_GRASS_BOTTOM_RIGHT)
+                    continue;
+
+                // Only process pavement tiles for conversion to transition tiles
+                if (currentId == TileTypes.PAVEMENT)
+                {
+                    // Check neighbors (with bounds checking)
+                    bool topIsGrass = y > 0 && TileTypes.IsGrassLike(grid[x, y - 1].Id);
+                    bool rightIsGrass = x < width - 1 && TileTypes.IsGrassLike(grid[x + 1, y].Id);
+                    bool bottomIsGrass = y < height - 1 && TileTypes.IsGrassLike(grid[x, y + 1].Id);
+                    bool leftIsGrass = x > 0 && TileTypes.IsGrassLike(grid[x - 1, y].Id);
+
+                    // If there's grass nearby, convert to appropriate transition tile
+                    if (topIsGrass || rightIsGrass || bottomIsGrass || leftIsGrass)
+                    {
+                        int newTileType =
+                            TileTypes.GetTransitionTile(topIsGrass, rightIsGrass, bottomIsGrass, leftIsGrass);
+                        grid[x, y] = Tiles[newTileType]; // Replace with transition tile
+                    }
+                }
+            }
+        }
+
+        return grid;
+    }
+
     private void InitializeDefaultTiles()
     {
-        // Using constants instead of hardcoded IDs
-        // Now using folder paths instead of specific image files
+        // Basic tiles
         Tiles.Add(new Tile(TileTypes.GRASS, "Grass", "grass"));
         Tiles.Add(new Tile(TileTypes.FLOWERS, "Flowers", "flowers"));
         Tiles.Add(new Tile(TileTypes.PAVEMENT, "Pavement", "pavement"));
+
+        // Transition tiles
+        Tiles.Add(new Tile(TileTypes.PAVEMENT_GRASS_LEFT, "Pavement-Grass Left", "pavement-transitions/left"));
+        Tiles.Add(new Tile(TileTypes.PAVEMENT_GRASS_RIGHT, "Pavement-Grass Right", "pavement-transitions/right"));
+        Tiles.Add(new Tile(TileTypes.PAVEMENT_GRASS_TOP, "Pavement-Grass Top", "pavement-transitions/top"));
+        Tiles.Add(new Tile(TileTypes.PAVEMENT_GRASS_BOTTOM, "Pavement-Grass Bottom", "pavement-transitions/bottom"));
+
+        // Corner transition tiles
+        Tiles.Add(new Tile(TileTypes.PAVEMENT_GRASS_TOP_LEFT, "Pavement-Grass Top-Left",
+            "pavement-transitions/top-left"));
+        Tiles.Add(new Tile(TileTypes.PAVEMENT_GRASS_TOP_RIGHT, "Pavement-Grass Top-Right",
+            "pavement-transitions/top-right"));
+        Tiles.Add(new Tile(TileTypes.PAVEMENT_GRASS_BOTTOM_LEFT, "Pavement-Grass Bottom-Left",
+            "pavement-transitions/bottom-left"));
+        Tiles.Add(new Tile(TileTypes.PAVEMENT_GRASS_BOTTOM_RIGHT, "Pavement-Grass Bottom-Right",
+            "pavement-transitions/bottom-right"));
     }
 
     private async Task GenerateAsync()
@@ -190,157 +242,15 @@ public class MainViewModel : INotifyPropertyChanged
 // Create a fallback grid with randomized patterns
     private void CreateFallbackGrid(int width, int height)
     {
-        return;
-        GridTiles.Clear();
-
-        // Use regular grid spacing
-        double tileWidth = 100;
-        double tileHeight = 100;
-
-        // Create a simple noise-based map
-        int[,] tileTypes = new int[width, height];
-
-        // Generate simple noise
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                // Simple pseudo-noise based on position for grass vs flowers
-                double grassFlowerNoise = Math.Sin(x * 0.5) * Math.Cos(y * 0.6) +
-                                          Math.Sin(x * 0.3 + y * 0.7) * 0.4;
-
-                // Add randomness
-                grassFlowerNoise += random.NextDouble() * 0.5 - 0.25;
-
-                // Different noise for pavement areas
-                double pavementNoise = Math.Cos(x * 0.3) * Math.Sin(y * 0.2) +
-                                       Math.Cos(x * 0.1 + y * 0.3) * 0.6;
-                pavementNoise += random.NextDouble() * 0.3 - 0.15;
-
-                // Pavement areas should be rarer but connected
-                bool isPavement = pavementNoise > 0.6 && (x % 3 == 0 || y % 3 == 0);
-
-                // Map to tile types
-                if (isPavement)
-                {
-                    tileTypes[x, y] = TileTypes.PAVEMENT;
-                }
-                else if (grassFlowerNoise > 0.2) // Higher threshold for flowers to make them rarer
-                {
-                    tileTypes[x, y] = TileTypes.FLOWERS;
-                }
-                else
-                {
-                    tileTypes[x, y] = TileTypes.GRASS;
-                }
-            }
-        }
-
-        // Make sure we have some coherent areas - apply cellular automata to smooth
-        for (int pass = 0; pass < 2; pass++)
-        {
-            int[,] newTileTypes = new int[width, height];
-
-            // Copy current types first
-            for (int x = 0; x < width; x++)
-            {
-                for (int y = 0; y < height; y++)
-                {
-                    newTileTypes[x, y] = tileTypes[x, y];
-                }
-            }
-
-            // Apply smoothing based on neighbors
-            for (int x = 0; x < width; x++)
-            {
-                for (int y = 0; y < height; y++)
-                {
-                    // Count neighbor types
-                    int[] typeCount = new int[3] { 0, 0, 0 }; // Count of GRASS, FLOWERS, PAVEMENT
-                    int totalNeighbors = 0;
-
-                    for (int dx = -1; dx <= 1; dx++)
-                    {
-                        for (int dy = -1; dy <= 1; dy++)
-                        {
-                            int nx = x + dx;
-                            int ny = y + dy;
-
-                            if (nx >= 0 && nx < width && ny >= 0 && ny < height)
-                            {
-                                totalNeighbors++;
-                                typeCount[tileTypes[nx, ny]]++;
-                            }
-                        }
-                    }
-
-                    // Find the most common type
-                    int mostCommonType = 0;
-                    for (int i = 1; i < typeCount.Length; i++)
-                    {
-                        if (typeCount[i] > typeCount[mostCommonType])
-                        {
-                            mostCommonType = i;
-                        }
-                    }
-
-                    // 80% chance to conform to the most common neighbor type
-                    if (random.NextDouble() < 0.8)
-                    {
-                        newTileTypes[x, y] = mostCommonType;
-                    }
-                }
-            }
-
-            // Update tile types
-            for (int x = 0; x < width; x++)
-            {
-                for (int y = 0; y < height; y++)
-                {
-                    tileTypes[x, y] = newTileTypes[x, y];
-                }
-            }
-        }
-
-        // Refresh tile images for each tile
-        foreach (var tile in Tiles)
-        {
-            if (tile is Tile dynamicTile)
-            {
-                dynamicTile.LoadRandomImage();
-            }
-        }
-
-        // Now render the tiles in a regular grid (no offset for odd rows)
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                var tile = Tiles[tileTypes[x, y]];
-
-                // Regular grid layout (no offset)
-                double xPos = x * tileWidth;
-                double yPos = y * tileHeight;
-
-                GridTiles.Add(new TileDisplay
-                {
-                    Image = tile.Image,
-                    X = (float)xPos,
-                    Y = (float)yPos
-                });
-            }
-        }
-
-        Status = "Created random procedural map";
     }
 
+// In UpdateGridDisplay method, add a call to PostProcessGrid:
     private void UpdateGridDisplay(Tile[,] grid, WFCSettings settings)
     {
-        GridTiles.Clear();
+        // Post-process the grid to add transition tiles
+        grid = PostProcessGrid(grid, settings.Width, settings.Height);
 
-        // Use regular grid spacing values instead of hexagonal offset
-        double tileWidth = 100;
-        double tileHeight = 100;
+        GridTiles.Clear();
 
         for (int y = 0; y < settings.Height; y++)
         {
@@ -348,17 +258,16 @@ public class MainViewModel : INotifyPropertyChanged
             {
                 var tile = grid[x, y] ?? Tiles[0]; // Default to first tile if null
 
-                // Calculate position using regular grid layout (no offset for odd rows)
-                double xPos = x * tileWidth;
-                double yPos = y * tileHeight;
+                // Create a copy of the tile to get a fresh random image
+                // This ensures each tile placement gets a different random image
+                var tileCopy = new Tile(tile.Id, tile.Name, tile.FolderPath);
 
-                // Add the tile to the display
-                GridTiles.Add(new TileDisplay
-                {
-                    Image = tile.Image,
-                    X = (float)xPos,
-                    Y = (float)yPos
-                });
+                // Calculate position using regular grid layout
+                double xPos = x * 100;
+                double yPos = y * 100;
+
+                // Create a new TileDisplay with the newly created tile
+                GridTiles.Add(new TileDisplay(tileCopy, (float)xPos, (float)yPos));
             }
         }
     }
