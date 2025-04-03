@@ -2,51 +2,50 @@
 
 public static class TileTypes
 {
-    // Константы для ID тайлов
-    public const int EARTH = 0;
-    public const int WATER = 1;
-    public const int SHORE_LEFT_WATER_RIGHT = 2; // Вода слева, земля справа
-    public const int SHORE_RIGHT_WATER_LEFT = 3; // Вода справа, земля слева
-
-    // Получить тип поверхности для определенного тайла и направления
+    // New tile type constants
+    public const int GRASS = 0;
+    public const int FLOWERS = 1;
+    public const int PAVEMENT = 2;
+    
+    // Surface types for different tiles
     public static SurfaceType GetSurfaceType(int tileId, string direction)
     {
         switch (tileId)
         {
-            case EARTH:
-                return SurfaceType.Land;
-
-            case WATER:
-                return SurfaceType.Water;
-
-            case SHORE_LEFT_WATER_RIGHT:
-                // Тайл "Shore Left Water Right" (ID 2) имеет воду слева и землю справа
-                if (direction == "left")
-                    return SurfaceType.Water;
-                else
-                    return SurfaceType.Land;
-
-            case SHORE_RIGHT_WATER_LEFT:
-                // Тайл "Shore Right Water Left" (ID 3) имеет землю слева и воду справа
-                if (direction == "right")
-                    return SurfaceType.Water;
-                else
-                    return SurfaceType.Land;
-
+            case GRASS:
+                return SurfaceType.Grass;
+                
+            case FLOWERS:
+                return SurfaceType.Flowers;
+                
+            case PAVEMENT:
+                return SurfaceType.Pavement;
+                
             default:
-                return SurfaceType.Land;
+                return SurfaceType.Grass; // Default to grass
         }
     }
-
-    // Проверка, имеет ли тайл воду на указанной стороне
-    public static bool HasWaterOnSide(int tileId, string direction)
+    
+    // Helper methods to check tile compatibility
+    public static bool CanConnect(int tileId1, int tileId2, string direction)
     {
-        return GetSurfaceType(tileId, direction) == SurfaceType.Water;
+        var surface1 = GetSurfaceType(tileId1, direction);
+        var surface2 = GetSurfaceType(tileId2, GetOppositeDirection(direction));
+        
+        // Define which surfaces can connect to each other
+        return true; // By default, allow all connections
     }
-
-    // Проверка, имеет ли тайл землю на указанной стороне
-    public static bool HasLandOnSide(int tileId, string direction)
+    
+    // Get opposite direction
+    private static string GetOppositeDirection(string direction)
     {
-        return GetSurfaceType(tileId, direction) == SurfaceType.Land;
+        return direction switch
+        {
+            "right" => "left",
+            "left" => "right",
+            "up" => "down",
+            "down" => "up",
+            _ => throw new ArgumentException($"Invalid direction: {direction}")
+        };
     }
 }

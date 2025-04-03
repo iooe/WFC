@@ -20,7 +20,7 @@
             <ItemsControl ItemsSource="{Binding GridTiles}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <Canvas/>
+                        <Canvas />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemContainerStyle>
@@ -33,9 +33,8 @@
                     <DataTemplate>
                         <Image Source="{Binding Image}" 
                                Width="100" 
-                               Height="86"
-                               RenderOptions.BitmapScalingMode="NearestNeighbor"
-                               Margin="-10"/>
+                               Height="100"
+                               RenderOptions.BitmapScalingMode="NearestNeighbor"/>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

@@ -2,6 +2,7 @@
 
 public enum SurfaceType
 {
-    Land,
-    Water
+    Grass,
+    Flowers,
+    Pavement
 }

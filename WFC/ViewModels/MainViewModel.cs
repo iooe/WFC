@@ -99,10 +99,10 @@ public class MainViewModel : INotifyPropertyChanged
     private void InitializeDefaultTiles()
     {
         // Using constants instead of hardcoded IDs
-        Tiles.Add(new Tile(TileTypes.EARTH, "Earth", "grass_center_e.png"));
-        Tiles.Add(new Tile(TileTypes.WATER, "Water Full", "water_center_e.png"));
-        Tiles.Add(new Tile(TileTypes.SHORE_LEFT_WATER_RIGHT, "Shore Left Water Right", "grass_waterConcave_W.png"));
-        Tiles.Add(new Tile(TileTypes.SHORE_RIGHT_WATER_LEFT, "Shore Right Water Left", "grass_waterConcave_E.png"));
+        // Now using folder paths instead of specific image files
+        Tiles.Add(new Tile(TileTypes.GRASS, "Grass", "grass"));
+        Tiles.Add(new Tile(TileTypes.FLOWERS, "Flowers", "flowers"));
+        Tiles.Add(new Tile(TileTypes.PAVEMENT, "Pavement", "pavement"));
     }
 
     private async Task GenerateAsync()
@@ -111,7 +111,7 @@ public class MainViewModel : INotifyPropertyChanged
         {
             // Clear any previous generation
             Reset();
-            
+
             // Create a new cancellation token source
             _cancellationTokenSource = new CancellationTokenSource();
 
@@ -120,8 +120,8 @@ public class MainViewModel : INotifyPropertyChanged
             int height = GridHeight;
 
             // Limit grid size to reasonable values
-            int safeGridWidth = Math.Min(width, 15);
-            int safeGridHeight = Math.Min(height, 15);
+            int safeGridWidth = Math.Min(width, 256);
+            int safeGridHeight = Math.Min(height, 256);
 
             if (safeGridWidth != width || safeGridHeight != height)
             {
@@ -163,7 +163,7 @@ public class MainViewModel : INotifyPropertyChanged
                 {
                     Status = "WFC failed: " + (result.ErrorMessage ?? "Unknown error");
                     await Task.Delay(10); // Allow UI to update
-                    
+
                     // Use a fallback method if WFC fails
                     CreateFallbackGrid(safeGridWidth, safeGridHeight);
                 }
@@ -187,43 +187,61 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    // Create a fallback grid with randomized patterns
+// Create a fallback grid with randomized patterns
     private void CreateFallbackGrid(int width, int height)
     {
+        return;
         GridTiles.Clear();
 
-        // Use the new hex spacing values provided by the user
-        double hexWidth = 100;
-        double hexHeight = 86;
-        double horizontalDistance = hexWidth * 0.54;
-        double verticalDistance = hexHeight * 0.47;
+        // Use regular grid spacing
+        double tileWidth = 100;
+        double tileHeight = 100;
 
         // Create a simple noise-based map
         int[,] tileTypes = new int[width, height];
-        
+
         // Generate simple noise
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                // Simple pseudo-noise based on position
-                double noiseValue = Math.Sin(x * 0.5) * Math.Cos(y * 0.6) + 
-                                  Math.Sin(x * 0.3 + y * 0.7) * 0.4;
-                                  
+                // Simple pseudo-noise based on position for grass vs flowers
+                double grassFlowerNoise = Math.Sin(x * 0.5) * Math.Cos(y * 0.6) +
+                                          Math.Sin(x * 0.3 + y * 0.7) * 0.4;
+
                 // Add randomness
-                noiseValue += random.NextDouble() * 0.5 - 0.25;
-                
-                // Map to tile types: above 0 = land, below 0 = water
-                tileTypes[x, y] = noiseValue > 0 ? TileTypes.EARTH : TileTypes.WATER;
+                grassFlowerNoise += random.NextDouble() * 0.5 - 0.25;
+
+                // Different noise for pavement areas
+                double pavementNoise = Math.Cos(x * 0.3) * Math.Sin(y * 0.2) +
+                                       Math.Cos(x * 0.1 + y * 0.3) * 0.6;
+                pavementNoise += random.NextDouble() * 0.3 - 0.15;
+
+                // Pavement areas should be rarer but connected
+                bool isPavement = pavementNoise > 0.6 && (x % 3 == 0 || y % 3 == 0);
+
+                // Map to tile types
+                if (isPavement)
+                {
+                    tileTypes[x, y] = TileTypes.PAVEMENT;
+                }
+                else if (grassFlowerNoise > 0.2) // Higher threshold for flowers to make them rarer
+                {
+                    tileTypes[x, y] = TileTypes.FLOWERS;
+                }
+                else
+                {
+                    tileTypes[x, y] = TileTypes.GRASS;
+                }
             }
         }
-        
-        // Add shoreline tiles
-        for (int pass = 0; pass < 2; pass++) // Two passes to ensure consistency
+
+        // Make sure we have some coherent areas - apply cellular automata to smooth
+        for (int pass = 0; pass < 2; pass++)
         {
             int[,] newTileTypes = new int[width, height];
-            
-            // Copy the current types first
+
+            // Copy current types first
             for (int x = 0; x < width; x++)
             {
                 for (int y = 0; y < height; y++)
@@ -231,28 +249,50 @@ public class MainViewModel : INotifyPropertyChanged
                     newTileTypes[x, y] = tileTypes[x, y];
                 }
             }
-            
-            // Then add shores
+
+            // Apply smoothing based on neighbors
             for (int x = 0; x < width; x++)
             {
                 for (int y = 0; y < height; y++)
                 {
-                    // Check right neighbor
-                    if (x < width - 1)
+                    // Count neighbor types
+                    int[] typeCount = new int[3] { 0, 0, 0 }; // Count of GRASS, FLOWERS, PAVEMENT
+                    int totalNeighbors = 0;
+
+                    for (int dx = -1; dx <= 1; dx++)
                     {
-                        if (tileTypes[x, y] == TileTypes.EARTH && tileTypes[x + 1, y] == TileTypes.WATER)
+                        for (int dy = -1; dy <= 1; dy++)
                         {
-                            newTileTypes[x, y] = TileTypes.SHORE_LEFT_WATER_RIGHT;
+                            int nx = x + dx;
+                            int ny = y + dy;
+
+                            if (nx >= 0 && nx < width && ny >= 0 && ny < height)
+                            {
+                                totalNeighbors++;
+                                typeCount[tileTypes[nx, ny]]++;
+                            }
                         }
-                        else if (tileTypes[x, y] == TileTypes.WATER && tileTypes[x + 1, y] == TileTypes.EARTH)
+                    }
+
+                    // Find the most common type
+                    int mostCommonType = 0;
+                    for (int i = 1; i < typeCount.Length; i++)
+                    {
+                        if (typeCount[i] > typeCount[mostCommonType])
                         {
-                            newTileTypes[x + 1, y] = TileTypes.SHORE_RIGHT_WATER_LEFT;
+                            mostCommonType = i;
                         }
+                    }
+
+                    // 80% chance to conform to the most common neighbor type
+                    if (random.NextDouble() < 0.8)
+                    {
+                        newTileTypes[x, y] = mostCommonType;
                     }
                 }
             }
-            
-            // Update the tile types
+
+            // Update tile types
             for (int x = 0; x < width; x++)
             {
                 for (int y = 0; y < height; y++)
@@ -261,21 +301,26 @@ public class MainViewModel : INotifyPropertyChanged
                 }
             }
         }
-        
-        // Now render the tiles
+
+        // Refresh tile images for each tile
+        foreach (var tile in Tiles)
+        {
+            if (tile is Tile dynamicTile)
+            {
+                dynamicTile.LoadRandomImage();
+            }
+        }
+
+        // Now render the tiles in a regular grid (no offset for odd rows)
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width; x++)
             {
                 var tile = Tiles[tileTypes[x, y]];
 
-                double xPos = x * horizontalDistance;
-                double yPos = y * verticalDistance;
-
-                if (y % 2 == 1)
-                {
-                    xPos += horizontalDistance / 2;
-                }
+                // Regular grid layout (no offset)
+                double xPos = x * tileWidth;
+                double yPos = y * tileHeight;
 
                 GridTiles.Add(new TileDisplay
                 {
@@ -293,26 +338,21 @@ public class MainViewModel : INotifyPropertyChanged
     {
         GridTiles.Clear();
 
-        // Use the new hex spacing values provided by the user
-        double hexWidth = 100;
-        double hexHeight = 86;
-        double horizontalDistance = hexWidth * 0.54;
-        double verticalDistance = hexHeight * 0.47;
+        // Use regular grid spacing values instead of hexagonal offset
+        double tileWidth = 100;
+        double tileHeight = 100;
 
         for (int y = 0; y < settings.Height; y++)
         {
             for (int x = 0; x < settings.Width; x++)
             {
-                var tile = grid[x, y] ?? Tiles[0]; // Default to Earth if null
+                var tile = grid[x, y] ?? Tiles[0]; // Default to first tile if null
 
-                double xPos = x * horizontalDistance;
-                double yPos = y * verticalDistance;
+                // Calculate position using regular grid layout (no offset for odd rows)
+                double xPos = x * tileWidth;
+                double yPos = y * tileHeight;
 
-                if (y % 2 == 1)
-                {
-                    xPos += horizontalDistance / 2;
-                }
-
+                // Add the tile to the display
                 GridTiles.Add(new TileDisplay
                 {
                     Image = tile.Image,
