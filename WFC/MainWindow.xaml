@@ -3,8 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:services="clr-namespace:WFC.Services"
         mc:Ignorable="d"
-        Title="WFC Generator" Height="450" Width="800">
+        Title="WFC Generator" Height="800" Width="1024">
+    
+    <Window.Resources>
+        <services:GridSizeConverter x:Key="GridSizeConverter"/>
+    </Window.Resources>
     
     <Grid>
         <Grid.ColumnDefinitions>
@@ -16,28 +21,35 @@
         <Border Grid.Column="0" 
                 BorderBrush="Gray" 
                 BorderThickness="1" 
-                Margin="20">
-            <ItemsControl ItemsSource="{Binding GridTiles}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <Canvas />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemContainerStyle>
-                    <Style TargetType="ContentPresenter">
-                        <Setter Property="Canvas.Left" Value="{Binding X}"/>
-                        <Setter Property="Canvas.Top" Value="{Binding Y}"/>
-                    </Style>
-                </ItemsControl.ItemContainerStyle>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Image Source="{Binding Image}" 
-                               Width="100" 
-                               Height="100"
-                               RenderOptions.BitmapScalingMode="NearestNeighbor"/>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                Margin="20"
+                Name="GridContainer">
+            <!-- Using a Viewbox for automatic scaling -->
+            <Viewbox Stretch="Uniform">
+                <Canvas Width="{Binding GridWidth, Converter={StaticResource GridSizeConverter}}" 
+                        Height="{Binding GridHeight, Converter={StaticResource GridSizeConverter}}">
+                    <ItemsControl ItemsSource="{Binding GridTiles}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="Canvas.Left" Value="{Binding X}"/>
+                                <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Image Source="{Binding Image}" 
+                                       Width="100" 
+                                       Height="100"
+                                       RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Canvas>
+            </Viewbox>
         </Border>
 
         <!-- Control Panel -->
@@ -70,9 +82,9 @@
                 <StackPanel Margin="5">
                     <TextBlock Text="Grid Size"/>
                     <StackPanel Orientation="Horizontal" Margin="0,5">
-                        <TextBox Text="{Binding GridWidth}" Width="50"/>
+                        <TextBox Text="{Binding GridWidth, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
                         <TextBlock Text=" x " Margin="5,0"/>
-                        <TextBox Text="{Binding GridHeight}" Width="50"/>
+                        <TextBox Text="{Binding GridHeight, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
                     </StackPanel>
                 </StackPanel>
             </GroupBox>

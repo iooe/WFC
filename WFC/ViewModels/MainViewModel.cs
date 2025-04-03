@@ -43,7 +43,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    private int _gridWidth = 10;
+    private int _gridWidth = 15;
 
     public int GridWidth
     {
@@ -55,7 +55,7 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-    private int _gridHeight = 10;
+    private int _gridHeight = 15;
 
     public int GridHeight
     {
