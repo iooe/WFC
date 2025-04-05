@@ -4,5 +4,7 @@ public enum SurfaceType
 {
     Grass,
     Flowers,
-    Pavement
+    Pavement,
+    Wall,
+    Window
 }

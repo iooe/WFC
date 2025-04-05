@@ -10,6 +10,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <Folder Include="Resources\buildings\wall-front-bottom-end\" />
+      <Folder Include="Resources\buildings\wall-front-top-end\" />
+      <Folder Include="Resources\buildings\window-bottom\" />
+      <Folder Include="Resources\buildings\window-top\" />
       <Folder Include="Resources\pavement-transitions\bottom-left\" />
       <Folder Include="Resources\pavement-transitions\bottom-right\" />
       <Folder Include="Resources\pavement-transitions\bottom\" />
@@ -18,6 +22,7 @@
       <Folder Include="Resources\pavement-transitions\top-left\" />
       <Folder Include="Resources\pavement-transitions\top-right\" />
       <Folder Include="Resources\pavement-transitions\top\" />
+      <Folder Include="Resources\walls\" />
       <Folder Include="Views\" />
     </ItemGroup>
 
@@ -35,4 +40,12 @@
 <ItemGroup>
   <Reference Include="System.Windows.Forms" />
  </ItemGroup>
+<ItemGroup>
+  <Resource Include="Resources\buildings\wall-front-corner-bottom-left\TX Tileset Wall TX Tileset Wall_23.png" />
+  <Resource Include="Resources\buildings\wall-front-corner-bottom-left\TX Tileset Wall TX Tileset Wall_59.png" />
+  <Resource Include="Resources\buildings\wall-front-corner-bottom-right\TX Tileset Wall TX Tileset Wall_25.png" />
+  <Resource Include="Resources\buildings\wall-front-corner-top-left\TX Tileset Wall TX Tileset Wall_57.png" />
+  <Resource Include="Resources\buildings\wall-front-corner-top-right\TX Tileset Wall TX Tileset Wall_58.png" />
+  <Resource Include="Resources\buildings\wall-front-right-end\TX Tileset Wall TX Tileset Wall --- right.png" />
+</ItemGroup>
 </Project>

@@ -124,8 +124,10 @@ public class MainViewModel : INotifyPropertyChanged
                 var currentTile = grid[x, y];
                 int currentId = currentTile.Id;
 
-                // Skip if already a transition tile
-                if (currentId >= TileTypes.PAVEMENT_GRASS_LEFT && currentId <= TileTypes.PAVEMENT_GRASS_BOTTOM_RIGHT)
+                // Skip if already a transition tile or building tile
+                if ((currentId >= TileTypes.PAVEMENT_GRASS_LEFT &&
+                     currentId <= TileTypes.PAVEMENT_GRASS_BOTTOM_RIGHT) ||
+                    TileTypes.IsWallTile(currentId) || TileTypes.IsWindowTile(currentId))
                     continue;
 
                 // Only process pavement tiles for conversion to transition tiles
@@ -148,8 +150,109 @@ public class MainViewModel : INotifyPropertyChanged
             }
         }
 
+        // Second pass: Ensure building coherence
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                var currentTile = grid[x, y];
+                int currentId = currentTile.Id;
+
+                // Fix issues with buildings
+                if (TileTypes.IsWallTile(currentId) || TileTypes.IsWindowTile(currentId))
+                {
+                    // Process building tiles
+                    grid = EnsureBuildingCoherence(grid, x, y, width, height);
+                }
+            }
+        }
+
         return grid;
     }
+
+// Helper method to ensure building tiles connect properly
+    private Tile[,] EnsureBuildingCoherence(Tile[,] grid, int x, int y, int width, int height)
+    {
+        int currentId = grid[x, y].Id;
+
+        // Fix window pairs
+        if (currentId == TileTypes.WALL_WINDOW_TOP)
+        {
+            // Window top should have window bottom below it
+            if (y < height - 1 && !TileTypes.IsWindowTile(grid[x, y + 1].Id))
+            {
+                // Only replace if below is a wall (not another type of tile)
+                if (y < height - 1 && TileTypes.IsWallTile(grid[x, y + 1].Id))
+                    grid[x, y + 1] = Tiles[TileTypes.WALL_WINDOW_BOTTOM];
+                else
+                    // If we can't place a window bottom, replace window top with wall
+                    grid[x, y] = Tiles[TileTypes.WALL_FRONT_MIDDLE];
+            }
+        }
+        else if (currentId == TileTypes.WALL_WINDOW_BOTTOM)
+        {
+            // Window bottom should have window top above it
+            if (y > 0 && !TileTypes.IsWindowTile(grid[x, y - 1].Id))
+            {
+                // Only replace if above is a wall (not another type of tile)
+                if (y > 0 && TileTypes.IsWallTile(grid[x, y - 1].Id))
+                    grid[x, y - 1] = Tiles[TileTypes.WALL_WINDOW_TOP];
+                else
+                    // If we can't place a window top, replace window bottom with wall
+                    grid[x, y] = Tiles[TileTypes.WALL_FRONT_MIDDLE];
+            }
+        }
+
+        // Building edge checks - walls should connect to other walls or appropriate transitions
+        if (TileTypes.IsWallTile(currentId))
+        {
+            // Ensure wall corners are properly placed
+            if (currentId == TileTypes.WALL_FRONT_CORNER_TOP_LEFT)
+            {
+                // Should have wall to right and below
+                EnsureConnectedTileIfWall(grid, x + 1, y, width, height, TileTypes.WALL_FRONT_MIDDLE);
+                EnsureConnectedTileIfWall(grid, x, y + 1, width, height, TileTypes.WALL_FRONT_LEFT_END);
+            }
+            else if (currentId == TileTypes.WALL_FRONT_CORNER_TOP_RIGHT)
+            {
+                // Should have wall to left and below
+                EnsureConnectedTileIfWall(grid, x - 1, y, width, height, TileTypes.WALL_FRONT_MIDDLE);
+                EnsureConnectedTileIfWall(grid, x, y + 1, width, height, TileTypes.WALL_FRONT_RIGHT_END);
+            }
+            else if (currentId == TileTypes.WALL_FRONT_CORNER_BOTTOM_LEFT)
+            {
+                // Should have wall to right and above
+                EnsureConnectedTileIfWall(grid, x + 1, y, width, height, TileTypes.WALL_FRONT_MIDDLE);
+                EnsureConnectedTileIfWall(grid, x, y - 1, width, height, TileTypes.WALL_FRONT_LEFT_END);
+            }
+            else if (currentId == TileTypes.WALL_FRONT_CORNER_BOTTOM_RIGHT)
+            {
+                // Should have wall to left and above
+                EnsureConnectedTileIfWall(grid, x - 1, y, width, height, TileTypes.WALL_FRONT_MIDDLE);
+                EnsureConnectedTileIfWall(grid, x, y - 1, width, height, TileTypes.WALL_FRONT_RIGHT_END);
+            }
+        }
+
+        return grid;
+    }
+
+// Helper method to ensure connected tile is appropriate wall if needed
+    private void EnsureConnectedTileIfWall(Tile[,] grid, int x, int y, int width, int height, int defaultTileType)
+    {
+        // Check bounds
+        if (x < 0 || y < 0 || x >= width || y >= height)
+            return;
+
+        // If current tile is not a wall or window, replace with default type
+        int currentId = grid[x, y].Id;
+        if (!TileTypes.IsWallTile(currentId) && !TileTypes.IsWindowTile(currentId))
+        {
+            grid[x, y] = Tiles[defaultTileType];
+        }
+    }
+
+
+// Обновить метод InitializeDefaultTiles в MainViewModel.cs:
 
     private void InitializeDefaultTiles()
     {
@@ -173,6 +276,32 @@ public class MainViewModel : INotifyPropertyChanged
             "pavement-transitions/bottom-left"));
         Tiles.Add(new Tile(TileTypes.PAVEMENT_GRASS_BOTTOM_RIGHT, "Pavement-Grass Bottom-Right",
             "pavement-transitions/bottom-right"));
+
+        // Wall tiles - front-facing
+        Tiles.Add(new Tile(TileTypes.WALL_FRONT_CORNER_TOP_LEFT, "Wall Front Top-Left Corner",
+            "buildings/wall-front-corner-top-left"));
+        Tiles.Add(new Tile(TileTypes.WALL_FRONT_CORNER_TOP_RIGHT, "Wall Front Top-Right Corner",
+            "buildings/wall-front-corner-top-right"));
+        Tiles.Add(new Tile(TileTypes.WALL_FRONT_CORNER_BOTTOM_LEFT, "Wall Front Bottom-Left Corner",
+            "buildings/wall-front-corner-bottom-left"));
+        Tiles.Add(new Tile(TileTypes.WALL_FRONT_CORNER_BOTTOM_RIGHT, "Wall Front Bottom-Right Corner",
+            "buildings/wall-front-corner-bottom-right"));
+        Tiles.Add(new Tile(TileTypes.WALL_FRONT_MIDDLE, "Wall Front Middle",
+            "buildings/wall-front-middle"));
+        Tiles.Add(new Tile(TileTypes.WALL_FRONT_TOP_END, "Wall Front Top End",
+            "buildings/wall-front-top-end"));
+        Tiles.Add(new Tile(TileTypes.WALL_FRONT_BOTTOM_END, "Wall Front Bottom End",
+            "buildings/wall-front-bottom-end"));
+        Tiles.Add(new Tile(TileTypes.WALL_FRONT_LEFT_END, "Wall Front Left End",
+            "buildings/wall-front-left-end"));
+        Tiles.Add(new Tile(TileTypes.WALL_FRONT_RIGHT_END, "Wall Front Right End",
+            "buildings/wall-front-right-end"));
+
+        // Window tiles
+        Tiles.Add(new Tile(TileTypes.WALL_WINDOW_TOP, "Wall Window Top",
+            "buildings/window-top"));
+        Tiles.Add(new Tile(TileTypes.WALL_WINDOW_BOTTOM, "Wall Window Bottom",
+            "buildings/window-bottom"));
     }
 
     private async Task GenerateAsync()

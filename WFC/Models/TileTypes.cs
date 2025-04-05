@@ -19,6 +19,21 @@ public static class TileTypes
     public const int PAVEMENT_GRASS_BOTTOM_LEFT = 9;  // Pavement with grass on bottom-left corner
     public const int PAVEMENT_GRASS_BOTTOM_RIGHT = 10; // Pavement with grass on bottom-right corner
     
+    // Wall tiles - front-facing
+    public const int WALL_FRONT_CORNER_TOP_LEFT = 11;     // Передний угловой верх-лево
+    public const int WALL_FRONT_CORNER_TOP_RIGHT = 12;    // Передний угловой верх-право
+    public const int WALL_FRONT_CORNER_BOTTOM_LEFT = 13;  // Передний угловой низ-лево
+    public const int WALL_FRONT_CORNER_BOTTOM_RIGHT = 14; // Передний угловой низ-право
+    public const int WALL_FRONT_MIDDLE = 15;              // Передний лицевой
+    public const int WALL_FRONT_TOP_END = 16;             // Передний верхний конечный
+    public const int WALL_FRONT_BOTTOM_END = 17;          // Передний нижний конечный
+    public const int WALL_FRONT_LEFT_END = 18;            // Передний конечный левый
+    public const int WALL_FRONT_RIGHT_END = 19;           // Передний конечный правый
+    
+    // Window tiles
+    public const int WALL_WINDOW_TOP = 20;                // Верхняя половина окна
+    public const int WALL_WINDOW_BOTTOM = 21;             // Нижняя половина окна
+    
     // Surface types for different tiles and directions
     public static SurfaceType GetSurfaceType(int tileId, string direction)
     {
@@ -58,6 +73,23 @@ public static class TileTypes
                 
             case PAVEMENT_GRASS_BOTTOM_RIGHT:
                 return (direction == "down" || direction == "right") ? SurfaceType.Grass : SurfaceType.Pavement;
+                
+            // Wall tiles
+            case WALL_FRONT_CORNER_TOP_LEFT:
+            case WALL_FRONT_CORNER_TOP_RIGHT:
+            case WALL_FRONT_CORNER_BOTTOM_LEFT:
+            case WALL_FRONT_CORNER_BOTTOM_RIGHT:
+            case WALL_FRONT_MIDDLE:
+            case WALL_FRONT_TOP_END:
+            case WALL_FRONT_BOTTOM_END:
+            case WALL_FRONT_LEFT_END:
+            case WALL_FRONT_RIGHT_END:
+                return SurfaceType.Wall;
+                
+            // Window tiles
+            case WALL_WINDOW_TOP:
+            case WALL_WINDOW_BOTTOM:
+                return SurfaceType.Window;
                 
             default:
                 return SurfaceType.Grass; // Default to grass
@@ -104,5 +136,47 @@ public static class TileTypes
     public static bool IsGrassLike(int tileId)
     {
         return tileId == GRASS || tileId == FLOWERS;
+    }
+    
+    // Helper method to check if a tile is a wall tile
+    public static bool IsWallTile(int tileId)
+    {
+        return tileId >= WALL_FRONT_CORNER_TOP_LEFT && tileId <= WALL_FRONT_RIGHT_END;
+    }
+    
+    // Helper method to check if a tile is a window tile
+    public static bool IsWindowTile(int tileId)
+    {
+        return tileId == WALL_WINDOW_TOP || tileId == WALL_WINDOW_BOTTOM;
+    }
+    
+    // Helper method to check if a tile is a building tile
+    public static bool IsBuildingTile(int tileId)
+    {
+        return IsWallTile(tileId) || IsWindowTile(tileId);
+    }
+    
+    // Helper method to get a wall top end tile
+    public static int GetWallTopEndTile(int currentTileId)
+    {
+        // Determine which top-end tile to use based on the current tile
+        if (currentTileId == WALL_FRONT_CORNER_TOP_LEFT || 
+            currentTileId == WALL_FRONT_LEFT_END || 
+            currentTileId == WALL_FRONT_MIDDLE)
+            return WALL_FRONT_TOP_END;
+            
+        return WALL_FRONT_TOP_END; // Default
+    }
+    
+    // Helper method to get a wall bottom end tile
+    public static int GetWallBottomEndTile(int currentTileId)
+    {
+        // Determine which bottom-end tile to use based on the current tile
+        if (currentTileId == WALL_FRONT_CORNER_BOTTOM_LEFT || 
+            currentTileId == WALL_FRONT_LEFT_END || 
+            currentTileId == WALL_FRONT_MIDDLE)
+            return WALL_FRONT_BOTTOM_END;
+            
+        return WALL_FRONT_BOTTOM_END; // Default
     }
 }
