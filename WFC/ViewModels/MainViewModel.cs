@@ -76,6 +76,18 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    private bool _isAnimationEnabled = true;
+
+    public bool IsAnimationEnabled
+    {
+        get => _isAnimationEnabled;
+        set
+        {
+            _isAnimationEnabled = value;
+            OnPropertyChanged(nameof(IsAnimationEnabled));
+        }
+    }
+
     private ObservableCollection<TileDisplay> _gridTiles;
 
     public ObservableCollection<TileDisplay> GridTiles
@@ -104,8 +116,7 @@ public class MainViewModel : INotifyPropertyChanged
 
         InitializeDefaultTiles();
 
-
-// Initialize these commands in the constructor:
+        // Initialize these commands in the constructor:
         ExportAsPngCommand = new AsyncRelayCommand(ExportAsPngAsync);
         ExportAsTilesCommand = new AsyncRelayCommand(ExportAsTilesAsync);
     }
@@ -170,7 +181,7 @@ public class MainViewModel : INotifyPropertyChanged
         return grid;
     }
 
-// Helper method to ensure building tiles connect properly
+    // Helper method to ensure building tiles connect properly
     private Tile[,] EnsureBuildingCoherence(Tile[,] grid, int x, int y, int width, int height)
     {
         int currentId = grid[x, y].Id;
@@ -236,7 +247,7 @@ public class MainViewModel : INotifyPropertyChanged
         return grid;
     }
 
-// Helper method to ensure connected tile is appropriate wall if needed
+    // Helper method to ensure connected tile is appropriate wall if needed
     private void EnsureConnectedTileIfWall(Tile[,] grid, int x, int y, int width, int height, int defaultTileType)
     {
         // Check bounds
@@ -250,9 +261,6 @@ public class MainViewModel : INotifyPropertyChanged
             grid[x, y] = Tiles[defaultTileType];
         }
     }
-
-
-// Обновить метод InitializeDefaultTiles в MainViewModel.cs:
 
     private void InitializeDefaultTiles()
     {
@@ -355,7 +363,7 @@ public class MainViewModel : INotifyPropertyChanged
 
                 if (result.Success && result.Grid != null)
                 {
-                    UpdateGridDisplay(result.Grid, settings);
+                    await UpdateGridDisplay(result.Grid, settings);
                     Status = "WFC generation completed successfully";
                 }
                 else
@@ -386,39 +394,230 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
-// Create a fallback grid with randomized patterns
+    // Create a fallback grid with randomized patterns
     private void CreateFallbackGrid(int width, int height)
     {
     }
 
-// In UpdateGridDisplay method, add a call to PostProcessGrid:
-    private void UpdateGridDisplay(Tile[,] grid, WFCSettings settings)
+    // Обновленный метод UpdateGridDisplay для поддержки анимации
+    private async Task UpdateGridDisplay(Tile[,] grid, WFCSettings settings)
     {
         // Post-process the grid to add transition tiles
         grid = PostProcessGrid(grid, settings.Width, settings.Height);
 
         GridTiles.Clear();
 
-        for (int y = 0; y < settings.Height; y++)
+        // Если анимация отключена, добавляем все тайлы сразу
+        if (!IsAnimationEnabled)
         {
-            for (int x = 0; x < settings.Width; x++)
+            for (int y = 0; y < settings.Height; y++)
             {
-                var tile = grid[x, y] ?? Tiles[0]; // Default to first tile if null
+                for (int x = 0; x < settings.Width; x++)
+                {
+                    var tile = grid[x, y] ?? Tiles[0]; // Default to first tile if null
 
-                // Create a copy of the tile to get a fresh random image
-                // This ensures each tile placement gets a different random image
-                var tileCopy = new Tile(tile.Id, tile.Name, tile.FolderPath);
+                    // Create a copy of the tile to get a fresh random image
+                    var tileCopy = new Tile(tile.Id, tile.Name, tile.FolderPath);
 
-                // Calculate position using regular grid layout
-                double xPos = x * 100;
-                double yPos = y * 100;
+                    // Calculate position using regular grid layout
+                    double xPos = x * 100;
+                    double yPos = y * 100;
 
-                // Create a new TileDisplay with the newly created tile
-                GridTiles.Add(new TileDisplay(tileCopy, (float)xPos, (float)yPos));
+                    // Create a new TileDisplay with the newly created tile
+                    GridTiles.Add(new TileDisplay(tileCopy, (float)xPos, (float)yPos));
+                }
             }
+        }
+        else
+        {
+            // Анимированный рендеринг
+            await AnimateTilesDisplay(grid, settings);
         }
     }
 
+    // Новый метод для анимированного рендеринга тайлов
+// Обновленный метод для анимированного рендеринга тайлов в порядке генерации WFC
+private async Task AnimateTilesDisplay(Tile[,] grid, WFCSettings settings)
+{
+    // Рассчитываем задержку на основе размера сетки
+    int totalTiles = settings.Width * settings.Height;
+    int baseDelay = 1; // Базовая задержка в миллисекундах
+    
+    // Масштабируем задержку обратно пропорционально размеру сетки
+    int delay = Math.Max(1, baseDelay * 100 / totalTiles * 10);
+    
+    Status = "Animating WFC algorithm steps...";
+    
+    // Показ первого прохода: создание базовой карты и применение алгоритма
+    Status = "Phase 1: Initial WFC grid generation...";
+    await Task.Delay(500); // Небольшая задержка для чтения статуса
+    
+    // Шаг 1: Основная генерация - последовательно слева направо, сверху вниз
+    // Это соответствует порядку генерации в DefaultWFCService.GenerateAsync
+    for (int y = 0; y < settings.Height; y++)
+    {
+        for (int x = 0; x < settings.Width; x++)
+        {
+            var tile = grid[x, y] ?? Tiles[0]; // Default to first tile if null
+            
+            // Create a copy of the tile to get a fresh random image
+            var tileCopy = new Tile(tile.Id, tile.Name, tile.FolderPath);
+            
+            // Calculate position using regular grid layout
+            double xPos = x * 100;
+            double yPos = y * 100;
+            
+            // Create a new TileDisplay with the newly created tile
+            GridTiles.Add(new TileDisplay(tileCopy, (float)xPos, (float)yPos));
+            
+            // Добавляем задержку между тайлами для визуализации
+            await Task.Delay(delay);
+        }
+        
+        // Обновляем статус каждые несколько строк
+        if (y % 5 == 0 || y == settings.Height - 1)
+        {
+            Status = $"Phase 1: Generating row {y+1}/{settings.Height}...";
+        }
+    }
+    
+    // Статус перед переходом к фазе пост-обработки
+    Status = "Phase 2: Post-processing transitions and buildings...";
+    await Task.Delay(1000); // Более длительная пауза перед следующей фазой
+    
+    // Шаг 2: Покажем процесс пост-обработки с помощью обновления существующих тайлов
+    // Сначала найдем, какие тайлы изменились при пост-обработке
+    // Для этого сравним каждый тайл с предположительно базовыми типами
+    List<(int x, int y, Tile tile)> changedTiles = new List<(int x, int y, Tile tile)>();
+    
+    // Определяем предполагаемые изменения для пост-обработки
+    // Сначала проверяем переходные тайлы между травой и асфальтом
+    for (int y = 0; y < settings.Height; y++)
+    {
+        for (int x = 0; x < settings.Width; x++)
+        {
+            var currentTile = grid[x, y];
+            int currentId = currentTile.Id;
+            
+            // Проверяем, является ли тайл переходным или зданием
+            bool isTransition = currentId >= TileTypes.PAVEMENT_GRASS_LEFT && 
+                                currentId <= TileTypes.PAVEMENT_GRASS_BOTTOM_RIGHT;
+            bool isBuilding = TileTypes.IsWallTile(currentId) || TileTypes.IsWindowTile(currentId);
+            
+            // Если тайл - переход или здание, вероятно, он был изменен при пост-обработке
+            if (isTransition || isBuilding)
+            {
+                changedTiles.Add((x, y, currentTile));
+            }
+        }
+    }
+    
+    // Если есть изменения при пост-обработке, анимируем их
+    if (changedTiles.Count > 0)
+    {
+        Status = $"Phase 2: Processing {changedTiles.Count} transitions and buildings...";
+        
+        // Сгруппируем по типам для лучшей визуализации процесса
+        // Сначала переходные тайлы (между травой и асфальтом)
+        var transitionTiles = changedTiles.Where(t => 
+            t.tile.Id >= TileTypes.PAVEMENT_GRASS_LEFT && 
+            t.tile.Id <= TileTypes.PAVEMENT_GRASS_BOTTOM_RIGHT).ToList();
+            
+        if (transitionTiles.Count > 0)
+        {
+            Status = $"Phase 2a: Adding {transitionTiles.Count} terrain transitions...";
+            await Task.Delay(500);
+            
+            // Анимируем обновление переходных тайлов
+            foreach (var (x, y, tile) in transitionTiles)
+            {
+                // Найдем тайл в коллекции и обновим его
+                var tileDisplay = GridTiles.FirstOrDefault(t => 
+                    Math.Abs(t.X - (x * 100)) < 0.1 && 
+                    Math.Abs(t.Y - (y * 100)) < 0.1);
+                
+                if (tileDisplay != null)
+                {
+                    // Создаем новый тайл с обновленными данными
+                    var tileCopy = new Tile(tile.Id, tile.Name, tile.FolderPath);
+                    
+                    // Обновляем изображение
+                    var index = GridTiles.IndexOf(tileDisplay);
+                    GridTiles[index] = new TileDisplay(tileCopy, tileDisplay.X, tileDisplay.Y);
+                    
+                    // Задержка для эффекта
+                    await Task.Delay(delay * 2);
+                }
+            }
+        }
+        
+        // Теперь здания
+        var buildingTiles = changedTiles.Where(t => 
+            TileTypes.IsWallTile(t.tile.Id) || TileTypes.IsWindowTile(t.tile.Id)).ToList();
+            
+        if (buildingTiles.Count > 0)
+        {
+            Status = $"Phase 2b: Building structures ({buildingTiles.Count} tiles)...";
+            await Task.Delay(500);
+            
+            // Сначала базовые части зданий
+            var wallTiles = buildingTiles.Where(t => TileTypes.IsWallTile(t.tile.Id)).ToList();
+            
+            foreach (var (x, y, tile) in wallTiles)
+            {
+                // Найдем тайл в коллекции и обновим его
+                var tileDisplay = GridTiles.FirstOrDefault(t => 
+                    Math.Abs(t.X - (x * 100)) < 0.1 && 
+                    Math.Abs(t.Y - (y * 100)) < 0.1);
+                
+                if (tileDisplay != null)
+                {
+                    // Создаем новый тайл с обновленными данными
+                    var tileCopy = new Tile(tile.Id, tile.Name, tile.FolderPath);
+                    
+                    // Обновляем изображение
+                    var index = GridTiles.IndexOf(tileDisplay);
+                    GridTiles[index] = new TileDisplay(tileCopy, tileDisplay.X, tileDisplay.Y);
+                    
+                    // Задержка для эффекта
+                    await Task.Delay(delay * 3);
+                }
+            }
+            
+            // Теперь окна
+            var windowTiles = buildingTiles.Where(t => TileTypes.IsWindowTile(t.tile.Id)).ToList();
+            
+            if (windowTiles.Count > 0)
+            {
+                Status = $"Phase 2c: Adding windows ({windowTiles.Count} tiles)...";
+                await Task.Delay(500);
+                
+                foreach (var (x, y, tile) in windowTiles)
+                {
+                    // Найдем тайл в коллекции и обновим его
+                    var tileDisplay = GridTiles.FirstOrDefault(t => 
+                        Math.Abs(t.X - (x * 100)) < 0.1 && 
+                        Math.Abs(t.Y - (y * 100)) < 0.1);
+                    
+                    if (tileDisplay != null)
+                    {
+                        // Создаем новый тайл с обновленными данными
+                        var tileCopy = new Tile(tile.Id, tile.Name, tile.FolderPath);
+                        
+                        // Обновляем изображение
+                        var index = GridTiles.IndexOf(tileDisplay);
+                        GridTiles[index] = new TileDisplay(tileCopy, tileDisplay.X, tileDisplay.Y);
+                        
+                        // Задержка для эффекта
+                        await Task.Delay(delay * 4);
+                    }
+                }
+            }
+        }
+    }
+    
+    Status = "WFC generation visualization completed";
+}
     private void Cancel()
     {
         _cancellationTokenSource?.Cancel();
@@ -443,7 +642,6 @@ public class MainViewModel : INotifyPropertyChanged
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
-
 
     // Improved export as PNG method (add to MainViewModel)
     private async Task ExportAsPngAsync()
@@ -545,8 +743,7 @@ public class MainViewModel : INotifyPropertyChanged
         return null;
     }
 
-// Improved export as individual tiles method (add to MainViewModel)
-// Improved export as individual tiles method (add to MainViewModel)
+    // Improved export as individual tiles method (add to MainViewModel)
     private async Task ExportAsTilesAsync()
     {
         try

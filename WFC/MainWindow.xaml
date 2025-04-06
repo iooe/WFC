@@ -6,45 +6,45 @@
         xmlns:services="clr-namespace:WFC.Services"
         mc:Ignorable="d"
         Title="WFC Generator" Height="800" Width="1024">
-    
+
     <Window.Resources>
-        <services:GridSizeConverter x:Key="GridSizeConverter"/>
+        <services:GridSizeConverter x:Key="GridSizeConverter" />
     </Window.Resources>
-    
+
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="250" />
         </Grid.ColumnDefinitions>
 
         <!-- WFC Grid Area -->
-        <Border Grid.Column="0" 
-                BorderBrush="Gray" 
-                BorderThickness="1" 
+        <Border Grid.Column="0"
+                BorderBrush="Gray"
+                BorderThickness="1"
                 Margin="20"
                 Name="GridContainer">
             <!-- Using a Viewbox for automatic scaling -->
             <Viewbox Stretch="Uniform">
-                <Canvas Width="{Binding GridWidth, Converter={StaticResource GridSizeConverter}}" 
+                <Canvas Width="{Binding GridWidth, Converter={StaticResource GridSizeConverter}}"
                         Height="{Binding GridHeight, Converter={StaticResource GridSizeConverter}}">
                     <ItemsControl ItemsSource="{Binding GridTiles}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <Canvas/>
+                                <Canvas />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemContainerStyle>
                             <Style TargetType="ContentPresenter">
-                                <Setter Property="Canvas.Left" Value="{Binding X}"/>
-                                <Setter Property="Canvas.Top" Value="{Binding Y}"/>
+                                <Setter Property="Canvas.Left" Value="{Binding X}" />
+                                <Setter Property="Canvas.Top" Value="{Binding Y}" />
                             </Style>
                         </ItemsControl.ItemContainerStyle>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Image Source="{Binding Image}" 
-                                       Width="100" 
+                                <Image Source="{Binding Image}"
+                                       Width="100"
                                        Height="100"
-                                       RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                                       RenderOptions.BitmapScalingMode="NearestNeighbor" />
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
@@ -54,70 +54,74 @@
 
         <!-- Control Panel -->
         <StackPanel Grid.Column="1" Margin="10">
-            <Button Content="Generate" 
+            <Button Content="Generate"
                     Command="{Binding GenerateCommand}"
-                    Height="30" 
-                    Margin="0,0,0,10"/>
-            
-            <Button Content="Cancel" 
+                    Height="30"
+                    Margin="0,0,0,10" />
+
+            <Button Content="Cancel"
                     Command="{Binding CancelCommand}"
-                    Height="30" 
-                    Margin="0,0,0,10"/>
-            
-            <Button Content="Reset" 
+                    Height="30"
+                    Margin="0,0,0,10" />
+
+            <Button Content="Reset"
                     Command="{Binding ResetCommand}"
-                    Height="30" 
-                    Margin="0,0,0,10"/>
-            
+                    Height="30"
+                    Margin="0,0,0,10" />
+
             <GroupBox Header="Export" Margin="0,0,0,10">
                 <StackPanel Margin="5">
-                    <Button Content="Export as PNG" 
+                    <Button Content="Export as PNG"
                             Command="{Binding ExportAsPngCommand}"
-                            Height="30" 
-                            Margin="0,5,0,5"/>
-        
-                    <Button Content="Export as Tiles" 
+                            Height="30"
+                            Margin="0,5,0,5" />
+
+                    <Button Content="Export as Tiles"
                             Command="{Binding ExportAsTilesCommand}"
-                            Height="30" 
-                            Margin="0,0,0,5"/>
+                            Height="30"
+                            Margin="0,0,0,5" />
                 </StackPanel>
             </GroupBox>
 
-            <ProgressBar Value="{Binding Progress}" 
-                        Height="20" 
-                        Margin="0,0,0,10"/>
-            
-            <TextBlock Text="{Binding Status}" 
-                      TextWrapping="Wrap"
-                      Margin="0,0,0,20"/>
+            <ProgressBar Value="{Binding Progress}"
+                         Height="20"
+                         Margin="0,0,0,10" />
+
+            <TextBlock Text="{Binding Status}"
+                       TextWrapping="Wrap"
+                       Margin="0,0,0,20" />
 
             <!-- Settings -->
             <GroupBox Header="Settings" Margin="0,0,0,10">
                 <StackPanel Margin="5">
-                    <TextBlock Text="Grid Size"/>
+                    <TextBlock Text="Grid Size" />
                     <StackPanel Orientation="Horizontal" Margin="0,5">
-                        <TextBox Text="{Binding GridWidth, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
-                        <TextBlock Text=" x " Margin="5,0"/>
-                        <TextBox Text="{Binding GridHeight, UpdateSourceTrigger=PropertyChanged}" Width="50"/>
+                        <TextBox Text="{Binding GridWidth, UpdateSourceTrigger=PropertyChanged}" Width="50" />
+                        <TextBlock Text=" x " Margin="5,0" />
+                        <TextBox Text="{Binding GridHeight, UpdateSourceTrigger=PropertyChanged}" Width="50" />
                     </StackPanel>
+                    
+                    <CheckBox Content="Enable Debug Render" 
+                              IsChecked="{Binding IsAnimationEnabled}" 
+                              Margin="0,10,0,0"/>
                 </StackPanel>
             </GroupBox>
 
             <!-- Available Tiles -->
             <GroupBox Header="Available Tiles">
-                <ListBox ItemsSource="{Binding Tiles}" 
+                <ListBox ItemsSource="{Binding Tiles}"
                          Height="150"
                          Margin="5">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal">
-                                <Image Source="{Binding Image}" 
-                                       Width="32" 
-                                       Height="32" 
+                                <Image Source="{Binding Image}"
+                                       Width="32"
+                                       Height="32"
                                        RenderOptions.BitmapScalingMode="NearestNeighbor"
-                                       Margin="0,0,5,0"/>
-                                <TextBlock Text="{Binding Name}" 
-                                          VerticalAlignment="Center"/>
+                                       Margin="0,0,5,0" />
+                                <TextBlock Text="{Binding Name}"
+                                           VerticalAlignment="Center" />
                             </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
