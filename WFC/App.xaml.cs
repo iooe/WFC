@@ -1,6 +1,9 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
+using WFC.Factories;
 using WFC.Services;
+using WFC.Services.Export;
+using WFC.Services.System;
 using WFC.ViewModels;
 using Application = System.Windows.Application;
 
@@ -19,7 +22,18 @@ namespace WFC
 
         private void ConfigureServices(IServiceCollection services)
         {
+            // Регистрируем основные сервисы
             services.AddSingleton<IWFCService, DefaultWFCService>();
+            services.AddSingleton<ITileFactory, DefaultTileFactory>();
+        
+            // Регистрируем новые сервисы для экспорта
+            services.AddSingleton<IDialogService, DialogService>();
+            services.AddSingleton<IFileSystem, FileSystem>();
+            services.AddSingleton<IVisualHelper, VisualHelper>();
+            services.AddSingleton<IExporterFactory, ExporterFactory>();
+            
+            // Регистрируем ViewModel и главное окно
+
             services.AddSingleton<MainViewModel>();
             services.AddTransient<MainWindow>();
         }
