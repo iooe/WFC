@@ -5,6 +5,7 @@ using WFC.Services;
 using WFC.Services.Export;
 using WFC.Services.System;
 using WFC.ViewModels;
+using WFC.Plugins;
 using Application = System.Windows.Application;
 
 namespace WFC
@@ -22,18 +23,23 @@ namespace WFC
 
         private void ConfigureServices(IServiceCollection services)
         {
-            // Регистрируем основные сервисы
-            services.AddSingleton<IWFCService, DefaultWFCService>();
-            services.AddSingleton<ITileFactory, DefaultTileFactory>();
-        
-            // Регистрируем новые сервисы для экспорта
+            // Register core services
+            services.AddSingleton<ITileFactory, TileFactory>();
             services.AddSingleton<IDialogService, DialogService>();
             services.AddSingleton<IFileSystem, FileSystem>();
             services.AddSingleton<IVisualHelper, VisualHelper>();
+            
+            // Register plugin system
+            services.AddSingleton<PluginManager>();
+            services.AddSingleton<TileConfigManager>();
+            
+            // Register export services
             services.AddSingleton<IExporterFactory, ExporterFactory>();
             
-            // Регистрируем ViewModel и главное окно
-
+            // Register WFC service
+            services.AddSingleton<IWFCService, DefaultWFCService>();
+            
+            // Register view models and views
             services.AddSingleton<MainViewModel>();
             services.AddTransient<MainWindow>();
         }

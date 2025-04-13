@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Windows.Media;
+using WFC.Models;
 
 namespace WFC.ViewModels;
 
@@ -7,7 +8,7 @@ public class TileDisplay : INotifyPropertyChanged
 {
     private ImageSource _image;
     
-    // Add a reference to the source Tile
+    // Reference to the source Tile
     public Tile SourceTile { get; set; }
     
     public ImageSource Image 
@@ -23,7 +24,7 @@ public class TileDisplay : INotifyPropertyChanged
     public float X { get; set; }
     public float Y { get; set; }
 
-    // Constructor that takes a Tile and loads a fresh random image
+    // Constructor that takes a Tile and positions
     public TileDisplay(Tile sourceTile, float x, float y)
     {
         SourceTile = sourceTile;

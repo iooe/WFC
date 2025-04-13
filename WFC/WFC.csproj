@@ -22,7 +22,6 @@
       <Folder Include="Resources\pavement-transitions\top-left\" />
       <Folder Include="Resources\pavement-transitions\top-right\" />
       <Folder Include="Resources\pavement-transitions\top\" />
-      <Folder Include="Resources\walls\" />
       <Folder Include="Views\" />
     </ItemGroup>
 

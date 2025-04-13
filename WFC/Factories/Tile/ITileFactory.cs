@@ -1,9 +1,10 @@
-﻿namespace WFC.Factories;
+﻿using WFC.Models;
 
 public interface ITileFactory
 {
-    Tile CreateTile(int id, string name, string folderPath);
-    Tile CreateBasicTile(int id, string name);
-    Tile CreateTransitionTile(int id, string name, string direction);
-    Tile CreateBuildingTile(int id, string name, string buildingPart);
+    /// <summary>
+    /// Create a new tile
+    /// </summary>
+    Tile CreateTile(int id, string tileId, string name, string folderPath, 
+        string category = null, Dictionary<string, string> properties = null);
 }

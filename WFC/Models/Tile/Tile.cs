@@ -7,36 +7,78 @@ using Color = System.Windows.Media.Color;
 using FlowDirection = System.Windows.FlowDirection;
 using Point = System.Windows.Point;
 
+namespace WFC.Models;
+
+/// <summary>
+/// Represents a tile in the WFC grid
+/// </summary>
 public class Tile
 {
     private static Random random = new Random();
     
+    /// <summary>
+    /// Internal numeric ID (index in the tile array)
+    /// </summary>
     public int Id { get; }
+    
+    /// <summary>
+    /// Unique string identifier
+    /// </summary>
+    public string TileId { get; }
+    
+    /// <summary>
+    /// Display name of the tile
+    /// </summary>
     public string Name { get; }
+    
+    /// <summary>
+    /// Image source for the tile
+    /// </summary>
     public ImageSource Image { get; private set; }
+    
+    /// <summary>
+    /// Path to the folder containing tile images
+    /// </summary>
     public string FolderPath { get; }
     
-    // Keep track of all images in the folder
-    private List<string> availableImages;
+    /// <summary>
+    /// Category of the tile
+    /// </summary>
+    public string Category { get; }
     
-    // Constructor for specifying a folder path
-    public Tile(int id, string name, string folderPath)
+    /// <summary>
+    /// Properties of the tile
+    /// </summary>
+    public Dictionary<string, string> Properties { get; }
+    
+    // Track all images in the folder
+    private List<string> _availableImages;
+    
+    /// <summary>
+    /// Create a new tile
+    /// </summary>
+    public Tile(int id, string tileId, string name, string folderPath, string category = null, Dictionary<string, string> properties = null)
     {
         Id = id;
+        TileId = tileId;
         Name = name;
         FolderPath = folderPath;
+        Category = category ?? "Default";
+        Properties = properties ?? new Dictionary<string, string>();
         
-        // Find all available images in the folder
+        // Find all available images
         FindAvailableImages();
         
         // Load an initial random image
         LoadRandomImage();
     }
     
-    // Find all available images in the folder
+    /// <summary>
+    /// Find all available images in the folder
+    /// </summary>
     private void FindAvailableImages()
     {
-        availableImages = new List<string>();
+        _availableImages = new List<string>();
         
         try
         {
@@ -48,64 +90,72 @@ public class Tile
             if (!Directory.Exists(resourcesPath))
             {
                 Console.WriteLine($"Directory not found: {resourcesPath}");
+                CreateFallbackImageInMemory();
                 return;
             }
             
-            // Get all image files with appropriate extensions
-            var imageExtensions = new[] { ".png", ".jpg", ".jpeg" };
+            // Get all image files
+            var imageExtensions = new[] { ".png", ".jpg", ".jpeg", ".bmp" };
             
             foreach (var file in Directory.GetFiles(resourcesPath))
             {
                 string extension = Path.GetExtension(file).ToLowerInvariant();
                 if (imageExtensions.Contains(extension))
                 {
-                    availableImages.Add(file);
+                    _availableImages.Add(file);
                 }
             }
             
-            // If no images found, create default
-            if (availableImages.Count == 0)
+            // If no images found, check for default image
+            if (_availableImages.Count == 0)
             {
                 string defaultPath = Path.Combine(resourcesPath, "default.png");
                 if (File.Exists(defaultPath))
                 {
-                    availableImages.Add(defaultPath);
+                    _availableImages.Add(defaultPath);
+                }
+                else
+                {
+                    CreateFallbackImageInMemory();
                 }
             }
             
-            Console.WriteLine($"Found {availableImages.Count} images in {resourcesPath}");
+            Console.WriteLine($"Found {_availableImages.Count} images in {resourcesPath}");
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error finding images in folder {FolderPath}: {ex.Message}");
+            CreateFallbackImageInMemory();
         }
     }
     
-    // Load a random image
+    /// <summary>
+    /// Load a random image from available images
+    /// </summary>
     public void LoadRandomImage()
     {
-        // If we have no images or need to refresh the list
-        if (availableImages == null || availableImages.Count == 0)
+        // If no available images, find them or create fallback
+        if (_availableImages == null || _availableImages.Count == 0)
         {
             FindAvailableImages();
         }
         
         try
         {
-            // Choose a random image from available ones
-            if (availableImages.Count > 0)
+            // Choose a random image
+            if (_availableImages != null && _availableImages.Count > 0)
             {
-                string randomImageFile = availableImages[random.Next(availableImages.Count)];
+                string randomImageFile = _availableImages[random.Next(_availableImages.Count)];
                 
                 // Load the image
                 BitmapImage bitmap = new BitmapImage();
                 bitmap.BeginInit();
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;
                 
-                // Use a FileStream approach to handle spaces correctly
+                // Use file stream to handle paths with spaces
                 using (var stream = new FileStream(randomImageFile, FileMode.Open, FileAccess.Read))
                 {
-                    // Create a memory stream to copy the file stream
+                    // Create memory stream to copy the file stream
                     MemoryStream memoryStream = new MemoryStream();
                     stream.CopyTo(memoryStream);
                     memoryStream.Position = 0;
@@ -131,7 +181,9 @@ public class Tile
         }
     }
     
-    // Create a fallback image in memory
+    /// <summary>
+    /// Create a fallback image in memory
+    /// </summary>
     private void CreateFallbackImageInMemory()
     {
         try
@@ -139,35 +191,40 @@ public class Tile
             // Create a DrawingVisual
             var drawingVisual = new DrawingVisual();
             
-            // Get a drawing context from the DrawingVisual
+            // Get a drawing context
             using (DrawingContext drawingContext = drawingVisual.RenderOpen())
             {
-                // Set color based on folder name
+                // Set color based on category
                 Color color;
-                if (FolderPath.Contains("grass", StringComparison.OrdinalIgnoreCase))
+                switch (Category.ToLowerInvariant())
                 {
-                    color = Colors.LightGreen;
-                }
-                else if (FolderPath.Contains("flower", StringComparison.OrdinalIgnoreCase))
-                {
-                    color = Colors.Pink;
-                }
-                else if (FolderPath.Contains("pavement", StringComparison.OrdinalIgnoreCase))
-                {
-                    color = Colors.Gray;
-                }
-                else
-                {
-                    color = Colors.LightBlue;
+                    case "grass":
+                        color = Colors.LightGreen;
+                        break;
+                    case "flowers":
+                        color = Colors.Pink;
+                        break;
+                    case "pavement":
+                        color = Colors.Gray;
+                        break;
+                    case "building":
+                        color = Colors.SandyBrown;
+                        break;
+                    case "water":
+                        color = Colors.LightBlue;
+                        break;
+                    default:
+                        color = Colors.White;
+                        break;
                 }
                 
-                // Draw a colored rectangle as the background
+                // Draw background rectangle
                 Rect rect = new Rect(0, 0, 100, 100);
                 drawingContext.DrawRectangle(new SolidColorBrush(color), null, rect);
                 
-                // Add folder name as text
+                // Add tile name as text
                 FormattedText formattedText = new FormattedText(
-                    Path.GetFileName(FolderPath),
+                    Name,
                     System.Globalization.CultureInfo.CurrentCulture,
                     FlowDirection.LeftToRight,
                     new Typeface("Arial"),
@@ -179,13 +236,13 @@ public class Tile
                     new Point((100 - formattedText.Width) / 2, (100 - formattedText.Height) / 2));
             }
             
-            // Create a RenderTargetBitmap from the DrawingVisual
+            // Create a RenderTargetBitmap
             RenderTargetBitmap renderTargetBitmap = new RenderTargetBitmap(
                 100, 100, 96, 96, PixelFormats.Pbgra32);
             
             renderTargetBitmap.Render(drawingVisual);
             
-            // Set the RenderTargetBitmap as the Image
+            // Set as image
             Image = renderTargetBitmap;
             
             Console.WriteLine("Created fallback image in memory");
@@ -193,20 +250,8 @@ public class Tile
         catch (Exception ex)
         {
             Console.WriteLine($"Error creating fallback image: {ex.Message}");
-            // Absolute last resort - create a 1x1 pixel image
+            // Last resort: create a 1x1 pixel image
             Image = new WriteableBitmap(1, 1, 96, 96, PixelFormats.Bgra32, null);
         }
-    }
-}
-
-// Extension method to clone a stream
-public static class StreamExtensions
-{
-    public static MemoryStream CloneStream(this Stream stream)
-    {
-        MemoryStream ms = new MemoryStream();
-        stream.CopyTo(ms);
-        ms.Position = 0;
-        return ms;
     }
 }
