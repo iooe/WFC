@@ -99,7 +99,7 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     // Debug rendering
-    private bool _isAnimationEnabled = true;
+    private bool _isAnimationEnabled = false;
     public bool IsAnimationEnabled
     {
         get => _isAnimationEnabled;
