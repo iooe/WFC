@@ -32,5 +32,48 @@ namespace WFC
             // This event is wired up but we don't need to do anything here
             // The Viewbox will automatically scale the Canvas based on available space
         }
+        
+        private void CheckBox_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            // Логируем для отладки
+            Console.WriteLine("CheckBox_CheckedChanged вызван");
+    
+            // Получаем CheckBox, который вызвал событие
+            var checkBox = sender as CheckBox;
+            if (checkBox == null) 
+            {
+                Console.WriteLine("CheckBox равен null");
+                return;
+            }
+    
+            // Получаем контекст данных (PluginViewModel)
+            var pluginVM = checkBox.DataContext as PluginViewModel;
+            if (pluginVM == null) 
+            {
+                Console.WriteLine("PluginViewModel равен null");
+                return;
+            }
+    
+            Console.WriteLine($"Плагин: {pluginVM.Name}, новое состояние: {pluginVM.Enabled}");
+    
+            // Получаем ViewModel окна
+            var viewModel = DataContext as MainViewModel;
+            if (viewModel == null) 
+            {
+                Console.WriteLine("MainViewModel равен null");
+                return;
+            }
+    
+            // Вызываем команду
+            if (viewModel.TogglePluginCommand.CanExecute(pluginVM))
+            {
+                Console.WriteLine("Выполняем команду TogglePluginCommand");
+                viewModel.TogglePluginCommand.Execute(pluginVM);
+            }
+            else
+            {
+                Console.WriteLine("TogglePluginCommand недоступна для выполнения");
+            }
+        }
     }
 }

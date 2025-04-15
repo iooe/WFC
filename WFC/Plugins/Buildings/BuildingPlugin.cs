@@ -12,6 +12,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
     public string Version => "1.0";
     public string Description => "Provides building tiles and generation logic";
 
+    public bool Enabled { get; set; }
+    
     // Post-processor priority
     public int Priority => 10;
 
@@ -27,7 +29,7 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
         _tileDefinitions = new List<TileDefinition>
         {
             // Wall tiles
-            new TileDefinition
+            new()
             {
                 Id = "building.wall.middle",
                 Name = "Wall Middle",
@@ -39,7 +41,7 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
                     { "surface", "wall" }
                 }
             },
-            new TileDefinition
+            new()
             {
                 Id = "building.wall.top_left",
                 Name = "Wall Top-Left Corner",
@@ -51,7 +53,7 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
                     { "surface", "wall" }
                 }
             },
-            new TileDefinition
+            new()
             {
                 Id = "building.wall.top_right",
                 Name = "Wall Top-Right Corner",
@@ -63,7 +65,7 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
                     { "surface", "wall" }
                 }
             },
-            new TileDefinition
+            new()
             {
                 Id = "building.wall.bottom_left",
                 Name = "Wall Bottom-Left Corner",
@@ -75,7 +77,7 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
                     { "surface", "wall" }
                 }
             },
-            new TileDefinition
+            new()
             {
                 Id = "building.wall.bottom_right",
                 Name = "Wall Bottom-Right Corner",
@@ -87,7 +89,7 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
                     { "surface", "wall" }
                 }
             },
-            new TileDefinition
+            new()
             {
                 Id = "building.wall.top",
                 Name = "Wall Top",
@@ -99,7 +101,7 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
                     { "surface", "wall" }
                 }
             },
-            new TileDefinition
+            new()
             {
                 Id = "building.wall.bottom",
                 Name = "Wall Bottom",
@@ -111,7 +113,7 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
                     { "surface", "wall" }
                 }
             },
-            new TileDefinition
+            new()
             {
                 Id = "building.wall.left",
                 Name = "Wall Left",
@@ -123,7 +125,7 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
                     { "surface", "wall" }
                 }
             },
-            new TileDefinition
+            new()
             {
                 Id = "building.wall.right",
                 Name = "Wall Right",
@@ -137,7 +139,7 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             },
 
             // Window tiles
-            new TileDefinition
+            new()
             {
                 Id = "building.window.top",
                 Name = "Window Top",
@@ -149,7 +151,7 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
                     { "surface", "window" }
                 }
             },
-            new TileDefinition
+            new()
             {
                 Id = "building.window.bottom",
                 Name = "Window Bottom",
@@ -198,10 +200,10 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "left",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.middle", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.right", Weight = 0.8f },
-                new TileConnectionWeight { ToTileId = "building.window.top", Weight = 0.6f },
-                new TileConnectionWeight { ToTileId = "building.window.bottom", Weight = 0.6f }
+                new() { ToTileId = "building.wall.middle", Weight = 1.0f },
+                new() { ToTileId = "building.wall.right", Weight = 0.8f },
+                new() { ToTileId = "building.window.top", Weight = 0.6f },
+                new() { ToTileId = "building.window.bottom", Weight = 0.6f }
             }
         });
 
@@ -211,10 +213,10 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "right",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.middle", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.left", Weight = 0.8f },
-                new TileConnectionWeight { ToTileId = "building.window.top", Weight = 0.6f },
-                new TileConnectionWeight { ToTileId = "building.window.bottom", Weight = 0.6f }
+                new() { ToTileId = "building.wall.middle", Weight = 1.0f },
+                new() { ToTileId = "building.wall.left", Weight = 0.8f },
+                new() { ToTileId = "building.window.top", Weight = 0.6f },
+                new() { ToTileId = "building.window.bottom", Weight = 0.6f }
             }
         });
 
@@ -224,9 +226,9 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "up",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.middle", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.top", Weight = 0.8f },
-                new TileConnectionWeight { ToTileId = "building.window.top", Weight = 0.7f }
+                new() { ToTileId = "building.wall.middle", Weight = 1.0f },
+                new() { ToTileId = "building.wall.top", Weight = 0.8f },
+                new() { ToTileId = "building.window.top", Weight = 0.7f }
             }
         });
 
@@ -236,9 +238,9 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "down",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.middle", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.bottom", Weight = 0.8f },
-                new TileConnectionWeight { ToTileId = "building.window.bottom", Weight = 0.7f }
+                new() { ToTileId = "building.wall.middle", Weight = 1.0f },
+                new() { ToTileId = "building.wall.bottom", Weight = 0.8f },
+                new() { ToTileId = "building.window.bottom", Weight = 0.7f }
             }
         });
     }
@@ -252,8 +254,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "right",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.top", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.window.top", Weight = 0.7f }
+                new() { ToTileId = "building.wall.top", Weight = 1.0f },
+                new() { ToTileId = "building.window.top", Weight = 0.7f }
             }
         });
 
@@ -263,8 +265,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "down",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.left", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.middle", Weight = 0.8f }
+                new() { ToTileId = "building.wall.left", Weight = 1.0f },
+                new() { ToTileId = "building.wall.middle", Weight = 0.8f }
             }
         });
 
@@ -275,8 +277,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "left",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.top", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.window.top", Weight = 0.7f }
+                new() { ToTileId = "building.wall.top", Weight = 1.0f },
+                new() { ToTileId = "building.window.top", Weight = 0.7f }
             }
         });
 
@@ -286,8 +288,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "down",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.right", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.middle", Weight = 0.8f }
+                new() { ToTileId = "building.wall.right", Weight = 1.0f },
+                new() { ToTileId = "building.wall.middle", Weight = 0.8f }
             }
         });
 
@@ -298,8 +300,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "right",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.bottom", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.window.bottom", Weight = 0.7f }
+                new() { ToTileId = "building.wall.bottom", Weight = 1.0f },
+                new() { ToTileId = "building.window.bottom", Weight = 0.7f }
             }
         });
 
@@ -309,8 +311,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "up",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.left", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.middle", Weight = 0.8f }
+                new() { ToTileId = "building.wall.left", Weight = 1.0f },
+                new() { ToTileId = "building.wall.middle", Weight = 0.8f }
             }
         });
 
@@ -321,8 +323,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "left",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.bottom", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.window.bottom", Weight = 0.7f }
+                new() { ToTileId = "building.wall.bottom", Weight = 1.0f },
+                new() { ToTileId = "building.window.bottom", Weight = 0.7f }
             }
         });
 
@@ -332,8 +334,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "up",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.right", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.middle", Weight = 0.8f }
+                new() { ToTileId = "building.wall.right", Weight = 1.0f },
+                new() { ToTileId = "building.wall.middle", Weight = 0.8f }
             }
         });
     }
@@ -347,8 +349,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "left",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.top", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.top_right", Weight = 0.8f }
+                new() { ToTileId = "building.wall.top", Weight = 1.0f },
+                new() { ToTileId = "building.wall.top_right", Weight = 0.8f }
             }
         });
 
@@ -358,8 +360,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "right",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.top", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.top_left", Weight = 0.8f }
+                new() { ToTileId = "building.wall.top", Weight = 1.0f },
+                new() { ToTileId = "building.wall.top_left", Weight = 0.8f }
             }
         });
 
@@ -369,8 +371,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "down",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.middle", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.window.top", Weight = 0.8f }
+                new() { ToTileId = "building.wall.middle", Weight = 1.0f },
+                new() { ToTileId = "building.window.top", Weight = 0.8f }
             }
         });
 
@@ -381,8 +383,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "left",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.bottom", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.bottom_right", Weight = 0.8f }
+                new() { ToTileId = "building.wall.bottom", Weight = 1.0f },
+                new() { ToTileId = "building.wall.bottom_right", Weight = 0.8f }
             }
         });
 
@@ -392,8 +394,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "right",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.bottom", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.bottom_left", Weight = 0.8f }
+                new() { ToTileId = "building.wall.bottom", Weight = 1.0f },
+                new() { ToTileId = "building.wall.bottom_left", Weight = 0.8f }
             }
         });
 
@@ -403,8 +405,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "up",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.middle", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.window.bottom", Weight = 0.8f }
+                new() { ToTileId = "building.wall.middle", Weight = 1.0f },
+                new() { ToTileId = "building.window.bottom", Weight = 0.8f }
             }
         });
 
@@ -415,8 +417,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "up",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.left", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.bottom_left", Weight = 0.8f }
+                new() { ToTileId = "building.wall.left", Weight = 1.0f },
+                new() { ToTileId = "building.wall.bottom_left", Weight = 0.8f }
             }
         });
 
@@ -426,8 +428,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "down",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.left", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.top_left", Weight = 0.8f }
+                new() { ToTileId = "building.wall.left", Weight = 1.0f },
+                new() { ToTileId = "building.wall.top_left", Weight = 0.8f }
             }
         });
 
@@ -437,9 +439,9 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "right",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.middle", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.window.top", Weight = 0.7f },
-                new TileConnectionWeight { ToTileId = "building.window.bottom", Weight = 0.7f }
+                new() { ToTileId = "building.wall.middle", Weight = 1.0f },
+                new() { ToTileId = "building.window.top", Weight = 0.7f },
+                new() { ToTileId = "building.window.bottom", Weight = 0.7f }
             }
         });
 
@@ -450,8 +452,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "up",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.right", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.bottom_right", Weight = 0.8f }
+                new() { ToTileId = "building.wall.right", Weight = 1.0f },
+                new() { ToTileId = "building.wall.bottom_right", Weight = 0.8f }
             }
         });
 
@@ -461,8 +463,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "down",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.right", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.top_right", Weight = 0.8f }
+                new() { ToTileId = "building.wall.right", Weight = 1.0f },
+                new() { ToTileId = "building.wall.top_right", Weight = 0.8f }
             }
         });
 
@@ -472,9 +474,9 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "left",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.middle", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.window.top", Weight = 0.7f },
-                new TileConnectionWeight { ToTileId = "building.window.bottom", Weight = 0.7f }
+                new() { ToTileId = "building.wall.middle", Weight = 1.0f },
+                new() { ToTileId = "building.window.top", Weight = 0.7f },
+                new() { ToTileId = "building.window.bottom", Weight = 0.7f }
             }
         });
     }
@@ -488,8 +490,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "left",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.middle", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.right", Weight = 0.8f }
+                new() { ToTileId = "building.wall.middle", Weight = 1.0f },
+                new() { ToTileId = "building.wall.right", Weight = 0.8f }
             }
         });
 
@@ -499,8 +501,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "right",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.middle", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.left", Weight = 0.8f }
+                new() { ToTileId = "building.wall.middle", Weight = 1.0f },
+                new() { ToTileId = "building.wall.left", Weight = 0.8f }
             }
         });
 
@@ -510,8 +512,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "up",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.middle", Weight = 0.9f },
-                new TileConnectionWeight { ToTileId = "building.wall.top", Weight = 0.8f }
+                new() { ToTileId = "building.wall.middle", Weight = 0.9f },
+                new() { ToTileId = "building.wall.top", Weight = 0.8f }
             }
         });
 
@@ -521,7 +523,7 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "down",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.window.bottom", Weight = 1.0f }
+                new() { ToTileId = "building.window.bottom", Weight = 1.0f }
             }
         });
 
@@ -532,8 +534,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "left",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.middle", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.right", Weight = 0.8f }
+                new() { ToTileId = "building.wall.middle", Weight = 1.0f },
+                new() { ToTileId = "building.wall.right", Weight = 0.8f }
             }
         });
 
@@ -543,8 +545,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "right",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.middle", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "building.wall.left", Weight = 0.8f }
+                new() { ToTileId = "building.wall.middle", Weight = 1.0f },
+                new() { ToTileId = "building.wall.left", Weight = 0.8f }
             }
         });
 
@@ -554,7 +556,7 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "up",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.window.top", Weight = 1.0f }
+                new() { ToTileId = "building.window.top", Weight = 1.0f }
             }
         });
 
@@ -564,8 +566,8 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "down",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "building.wall.middle", Weight = 0.9f },
-                new TileConnectionWeight { ToTileId = "building.wall.bottom", Weight = 0.8f }
+                new() { ToTileId = "building.wall.middle", Weight = 0.9f },
+                new() { ToTileId = "building.wall.bottom", Weight = 0.8f }
             }
         });
     }
@@ -580,9 +582,9 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "down",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "pavement.basic", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "grass.basic", Weight = 0.6f },
-                new TileConnectionWeight { ToTileId = "flowers.basic", Weight = 0.5f }
+                new() { ToTileId = "pavement.basic", Weight = 1.0f },
+                new() { ToTileId = "grass.basic", Weight = 0.6f },
+                new() { ToTileId = "flowers.basic", Weight = 0.5f }
             }
         });
 
@@ -593,9 +595,9 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "down",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "pavement.basic", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "grass.basic", Weight = 0.6f },
-                new TileConnectionWeight { ToTileId = "flowers.basic", Weight = 0.5f }
+                new() { ToTileId = "pavement.basic", Weight = 1.0f },
+                new() { ToTileId = "grass.basic", Weight = 0.6f },
+                new() { ToTileId = "flowers.basic", Weight = 0.5f }
             }
         });
 
@@ -605,9 +607,9 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "left",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "pavement.basic", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "grass.basic", Weight = 0.6f },
-                new TileConnectionWeight { ToTileId = "flowers.basic", Weight = 0.5f }
+                new() { ToTileId = "pavement.basic", Weight = 1.0f },
+                new() { ToTileId = "grass.basic", Weight = 0.6f },
+                new() { ToTileId = "flowers.basic", Weight = 0.5f }
             }
         });
 
@@ -618,9 +620,9 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "down",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "pavement.basic", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "grass.basic", Weight = 0.6f },
-                new TileConnectionWeight { ToTileId = "flowers.basic", Weight = 0.5f }
+                new() { ToTileId = "pavement.basic", Weight = 1.0f },
+                new() { ToTileId = "grass.basic", Weight = 0.6f },
+                new() { ToTileId = "flowers.basic", Weight = 0.5f }
             }
         });
 
@@ -630,9 +632,9 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "right",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "pavement.basic", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "grass.basic", Weight = 0.6f },
-                new TileConnectionWeight { ToTileId = "flowers.basic", Weight = 0.5f }
+                new() { ToTileId = "pavement.basic", Weight = 1.0f },
+                new() { ToTileId = "grass.basic", Weight = 0.6f },
+                new() { ToTileId = "flowers.basic", Weight = 0.5f }
             }
         });
 
@@ -643,9 +645,9 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "left",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "pavement.basic", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "grass.basic", Weight = 0.6f },
-                new TileConnectionWeight { ToTileId = "flowers.basic", Weight = 0.5f }
+                new() { ToTileId = "pavement.basic", Weight = 1.0f },
+                new() { ToTileId = "grass.basic", Weight = 0.6f },
+                new() { ToTileId = "flowers.basic", Weight = 0.5f }
             }
         });
 
@@ -655,9 +657,9 @@ public class BuildingPlugin : ITileSetPlugin, IPostProcessorPlugin, IGenerationH
             Direction = "right",
             PossibleConnections = new List<TileConnectionWeight>
             {
-                new TileConnectionWeight { ToTileId = "pavement.basic", Weight = 1.0f },
-                new TileConnectionWeight { ToTileId = "grass.basic", Weight = 0.6f },
-                new TileConnectionWeight { ToTileId = "flowers.basic", Weight = 0.5f }
+                new() { ToTileId = "pavement.basic", Weight = 1.0f },
+                new() { ToTileId = "grass.basic", Weight = 0.6f },
+                new() { ToTileId = "flowers.basic", Weight = 0.5f }
             }
         });
     }

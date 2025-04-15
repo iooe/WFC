@@ -136,6 +136,38 @@
                     </ListBox.ItemTemplate>
                 </ListBox>
             </GroupBox>
+            <GroupBox Header="Plugins" Margin="0,10,0,0">
+                <StackPanel>
+                    <TextBlock Text="Enable or disable plugins:" Margin="5"/>
+                    <ListBox ItemsSource="{Binding AvailablePlugins}"
+                             Height="150"
+                             Margin="5">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <!-- Используем прямую привязку к команде ViewModel -->
+                                    <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                              VerticalAlignment="Center"
+                                              Margin="0,0,5,0"
+                                              Checked="CheckBox_CheckedChanged"
+                                              Unchecked="CheckBox_CheckedChanged"/>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Name}" FontWeight="Bold"/>
+                                        <TextBlock Text="{Binding PluginType}" 
+                                                   FontSize="9" 
+                                                   Foreground="Gray"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <!-- Добавляем кнопку для явного применения изменений -->
+                    <Button Content="Apply Plugin Changes" 
+                            Command="{Binding ApplyPluginChangesCommand}"
+                            Margin="5,5,5,0" 
+                            HorizontalAlignment="Right"/>
+                </StackPanel>
+            </GroupBox>
         </StackPanel>
     </Grid>
 </Window>

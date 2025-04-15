@@ -16,12 +16,31 @@ namespace WFC.ViewModels;
 public class MainViewModel : INotifyPropertyChanged
 {
     private readonly IWFCService _wfcService;
-    private readonly ITileFactory _tileFactory;
     private readonly IExporterFactory _exporterFactory;
     private readonly PluginManager _pluginManager;
     private readonly TileConfigManager _tileConfigManager;
     private CancellationTokenSource _cancellationTokenSource;
 
+    public ICommand ApplyPluginChangesCommand { get; }
+    /// <summary>
+    /// Apply all plugin changes and refresh configuration
+    /// </summary>
+    private void ApplyPluginChanges()
+    {
+        // Перезагружаем все правила и конфигурации плиток
+        _pluginManager.RefreshTileDefinitions();
+        _tileConfigManager.Initialize();
+    
+        // Обновляем список доступных плиток
+        UpdateAvailableTiles();
+    
+        // Сохраняем настройки плагинов
+        _pluginManager.SavePluginPreferences();
+    
+        Status = "Plugin changes applied successfully";
+        Console.WriteLine("Plugin changes applied");
+    }
+    
     public event PropertyChangedEventHandler PropertyChanged;
 
     // Commands
@@ -30,6 +49,7 @@ public class MainViewModel : INotifyPropertyChanged
     public ICommand ResetCommand { get; }
     public ICommand ExportAsPngCommand { get; }
     public ICommand ExportAsTilesCommand { get; }
+    public ICommand TogglePluginCommand { get; }
 
     // Progress tracking
     private float _progress;
@@ -117,16 +137,17 @@ public class MainViewModel : INotifyPropertyChanged
     // Available tiles
     public ObservableCollection<Tile> Tiles { get; }
 
+    // Available plugins
+    public ObservableCollection<PluginViewModel> AvailablePlugins { get; }
+
     // Constructor
     public MainViewModel(
         IWFCService wfcService, 
-        ITileFactory tileFactory, 
         IExporterFactory exporterFactory,
         PluginManager pluginManager,
         TileConfigManager tileConfigManager)
     {
         _wfcService = wfcService;
-        _tileFactory = tileFactory;
         _exporterFactory = exporterFactory;
         _pluginManager = pluginManager;
         _tileConfigManager = tileConfigManager;
@@ -135,6 +156,7 @@ public class MainViewModel : INotifyPropertyChanged
 
         Tiles = new ObservableCollection<Tile>();
         GridTiles = new ObservableCollection<TileDisplay>();
+        AvailablePlugins = new ObservableCollection<PluginViewModel>();
         
         // Initialize commands
         GenerateCommand = new AsyncRelayCommand(GenerateAsync);
@@ -142,6 +164,8 @@ public class MainViewModel : INotifyPropertyChanged
         ResetCommand = new RelayCommand(Reset);
         ExportAsPngCommand = new AsyncRelayCommand(ExportAsPngAsync);
         ExportAsTilesCommand = new AsyncRelayCommand(ExportAsTilesAsync);
+        TogglePluginCommand = new RelayCommand<PluginViewModel>(TogglePlugin);
+        ApplyPluginChangesCommand = new RelayCommand(ApplyPluginChanges);
 
         // Initialize plugins and tile configuration
         InitializePlugins();
@@ -164,6 +188,9 @@ public class MainViewModel : INotifyPropertyChanged
             
             // Update available tiles
             UpdateAvailableTiles();
+            
+            // Update available plugins list
+            UpdatePluginsList();
             
             Status = $"Loaded {_pluginManager.Plugins.Count} plugins with {Tiles.Count} tiles";
         }
@@ -188,6 +215,44 @@ public class MainViewModel : INotifyPropertyChanged
         foreach (var tile in settings.Tiles)
         {
             Tiles.Add(tile);
+        }
+    }
+
+    /// <summary>
+    /// Update the list of available plugins
+    /// </summary>
+    private void UpdatePluginsList()
+    {
+        AvailablePlugins.Clear();
+        
+        foreach (var plugin in _pluginManager.Plugins)
+        {
+            AvailablePlugins.Add(new PluginViewModel(plugin));
+        }
+    }
+
+    /// <summary>
+    /// Toggle a plugin's enabled state
+    /// </summary>
+    private void TogglePlugin(PluginViewModel pluginViewModel)
+    {
+        if (pluginViewModel != null)
+        {
+            // Запоминаем старое состояние для протоколирования
+            bool wasEnabled = pluginViewModel.Enabled;
+        
+            // Изменяем состояние плагина через PluginManager
+            _pluginManager.TogglePlugin(pluginViewModel.Id, pluginViewModel.Enabled);
+        
+            // Важно: явно переинициализируем конфигурацию плиток
+            _tileConfigManager.Initialize();
+        
+            // Обновляем список доступных плиток
+            UpdateAvailableTiles();
+        
+            // Протоколируем изменения
+            Status = $"Plugin '{pluginViewModel.Name}' {(pluginViewModel.Enabled ? "enabled" : "disabled")}";
+            Console.WriteLine($"Plugin {pluginViewModel.Name} toggled from {wasEnabled} to {pluginViewModel.Enabled}");
         }
     }
 

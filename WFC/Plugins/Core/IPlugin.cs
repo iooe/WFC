@@ -26,6 +26,11 @@ public interface IPlugin
     string Description { get; }
     
     /// <summary>
+    /// Whether the plugin is enabled
+    /// </summary>
+    bool Enabled { get; set; }
+    
+    /// <summary>
     /// Initialize the plugin
     /// </summary>
     /// <param name="serviceProvider">Service provider for dependency resolution</param>

@@ -25,16 +25,59 @@ public class TileConfigManager
     /// <summary>
     /// Initialize the tile configuration
     /// </summary>
+    /// <summary>
+    /// Initialize the tile configuration
+    /// </summary>
     public void Initialize()
     {
-        // Load tile definitions from plugins
-        _tileDefinitions = new Dictionary<string, TileDefinition>(_pluginManager.TileDefinitions);
+        // Очищаем существующие определения
+        _tileDefinitions.Clear();
+        _ruleDefinitions.Clear();
+    
+        // Загружаем определения плиток только из активных плагинов
+        _tileDefinitions = new Dictionary<string, TileDefinition>();
+        foreach (var plugin in _pluginManager.TileSetPlugins)
+        {
+            if (!plugin.Enabled) continue;
+        
+            try
+            {
+                var definitions = plugin.GetTileDefinitions();
+                foreach (var definition in definitions)
+                {
+                    // Add or replace existing definition
+                    _tileDefinitions[definition.Id] = definition;
+                }
+                Console.WriteLine($"Loaded {definitions.Count()} tile definitions from plugin {plugin.Name}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading tile definitions from plugin {plugin.Name}: {ex.Message}");
+            }
+        }
 
-        // Load rule definitions from plugins
-        _ruleDefinitions = new List<TileRuleDefinition>(_pluginManager.RuleDefinitions);
+        // Загружаем определения правил только из активных плагинов
+        _ruleDefinitions = new List<TileRuleDefinition>();
+        foreach (var plugin in _pluginManager.TileSetPlugins)
+        {
+            if (!plugin.Enabled) continue;
+        
+            try
+            {
+                var definitions = plugin.GetRuleDefinitions();
+                _ruleDefinitions.AddRange(definitions);
+                Console.WriteLine($"Loaded {definitions.Count()} rule definitions from plugin {plugin.Name}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading rule definitions from plugin {plugin.Name}: {ex.Message}");
+            }
+        }
 
         // Load any additional configurations from file
         LoadConfigFiles();
+    
+        Console.WriteLine($"Tile configuration initialized with {_tileDefinitions.Count} tiles and {_ruleDefinitions.Count} rules");
     }
 
     /// <summary>

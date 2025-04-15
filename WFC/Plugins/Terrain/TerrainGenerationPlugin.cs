@@ -11,6 +11,7 @@ public class TerrainGenerationPlugin : IGenerationHookPlugin, IPostProcessorPlug
     public string Name => "Terrain Generator";
     public string Version => "1.0";
     public string Description => "Provides advanced terrain generation";
+    public bool Enabled { get; set; }
 
     // Post-processor priority - run before building plugin
     public int Priority => 5;

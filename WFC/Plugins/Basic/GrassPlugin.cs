@@ -12,6 +12,8 @@ public class GrassPlugin : ITileSetPlugin
     public string Version => "1.0";
     public string Description => "Provides basic grass tiles";
     
+    public bool Enabled { get; set; }
+    
     private List<TileDefinition> _tileDefinitions;
     private List<TileRuleDefinition> _ruleDefinitions;
     

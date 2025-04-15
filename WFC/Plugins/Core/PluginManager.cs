@@ -25,22 +25,22 @@ public class PluginManager
     public IReadOnlyList<IPlugin> Plugins => _plugins.AsReadOnly();
     
     /// <summary>
-    /// Get all tile set plugins
+    /// Get all enabled tile set plugins
     /// </summary>
     public IEnumerable<ITileSetPlugin> TileSetPlugins => 
-        _plugins.OfType<ITileSetPlugin>();
+        _plugins.OfType<ITileSetPlugin>().Where(p => p.Enabled);
         
     /// <summary>
-    /// Get all generation hook plugins
+    /// Get all enabled generation hook plugins
     /// </summary>
     public IEnumerable<IGenerationHookPlugin> GenerationHookPlugins =>
-        _plugins.OfType<IGenerationHookPlugin>();
+        _plugins.OfType<IGenerationHookPlugin>().Where(p => p.Enabled);
         
     /// <summary>
-    /// Get all post-processor plugins ordered by priority
+    /// Get all enabled post-processor plugins ordered by priority
     /// </summary>
     public IEnumerable<IPostProcessorPlugin> PostProcessorPlugins =>
-        _plugins.OfType<IPostProcessorPlugin>().OrderBy(p => p.Priority);
+        _plugins.OfType<IPostProcessorPlugin>().Where(p => p.Enabled).OrderBy(p => p.Priority);
     
     /// <summary>
     /// Get all tile definitions from loaded plugins
@@ -88,6 +88,7 @@ public class PluginManager
             try
             {
                 plugin.Initialize(_serviceProvider);
+                plugin.Enabled = true; // По умолчанию все плагины включены
                 Console.WriteLine($"Initialized plugin: {plugin.Name} ({plugin.Id})");
             }
             catch (Exception ex)
@@ -96,13 +97,28 @@ public class PluginManager
             }
         }
         
-        // Load tile definitions from plugins
+        // Load plugin preferences (enabled/disabled state)
+        LoadPluginPreferences();
+        
+        // Refresh tile definitions
+        RefreshTileDefinitions();
+    }
+    
+    /// <summary>
+    /// Refresh tile and rule definitions based on enabled plugins
+    /// </summary>
+    public void RefreshTileDefinitions()
+    {
+        _tileDefinitions.Clear();
+        _ruleDefinitions.Clear();
+        
+        // Load tile definitions from enabled plugins only
         LoadTileDefinitions();
         
-        // Load rule definitions from plugins
+        // Load rule definitions from enabled plugins only
         LoadRuleDefinitions();
         
-        Console.WriteLine($"Loaded {_tileDefinitions.Count} tile definitions from plugins");
+        Console.WriteLine($"Loaded {_tileDefinitions.Count} tile definitions from enabled plugins");
     
         if (_tileDefinitions.Count == 0)
         {
@@ -175,6 +191,87 @@ public class PluginManager
             {
                 Console.WriteLine($"Failed to load plugin assembly {pluginFile}: {ex.Message}");
             }
+        }
+    }
+    
+    /// <summary>
+    /// Load plugin preferences (enabled/disabled state)
+    /// </summary>
+    private void LoadPluginPreferences()
+    {
+        try
+        {
+            string prefsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "plugins.json");
+            if (File.Exists(prefsPath))
+            {
+                string json = File.ReadAllText(prefsPath);
+                var prefs = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, bool>>(json);
+                
+                foreach (var plugin in _plugins)
+                {
+                    if (prefs.TryGetValue(plugin.Id, out bool enabled))
+                    {
+                        plugin.Enabled = enabled;
+                    }
+                }
+                
+                Console.WriteLine("Loaded plugin preferences");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading plugin preferences: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Save plugin preferences (enabled/disabled state)
+    /// </summary>
+    public void SavePluginPreferences()
+    {
+        try
+        {
+            string configDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config");
+            if (!Directory.Exists(configDir))
+            {
+                Directory.CreateDirectory(configDir);
+            }
+            
+            string prefsPath = Path.Combine(configDir, "plugins.json");
+            
+            var prefs = _plugins.ToDictionary(p => p.Id, p => p.Enabled);
+            string json = System.Text.Json.JsonSerializer.Serialize(prefs, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+            
+            File.WriteAllText(prefsPath, json);
+            Console.WriteLine("Saved plugin preferences");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving plugin preferences: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Toggle a plugin's enabled state and refresh tile definitions
+    /// </summary>
+    public void TogglePlugin(string pluginId, bool enabled)
+    {
+        var plugin = _plugins.FirstOrDefault(p => p.Id == pluginId);
+        if (plugin != null)
+        {
+            // Изменяем состояние
+            plugin.Enabled = enabled;
+        
+            // Полностью обновляем определения плиток и правил
+            RefreshTileDefinitions();
+        
+            // Сохраняем настройки
+            SavePluginPreferences();
+        
+            Console.WriteLine($"Plugin {plugin.Name} ({plugin.Id}) {(enabled ? "enabled" : "disabled")}");
         }
     }
     

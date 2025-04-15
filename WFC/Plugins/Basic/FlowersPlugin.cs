@@ -12,6 +12,8 @@ public class FlowersPlugin : ITileSetPlugin
     public string Version => "1.0";
     public string Description => "Provides flower tiles";
     
+    public bool Enabled { get; set; }
+    
     private List<TileDefinition> _tileDefinitions;
     private List<TileRuleDefinition> _ruleDefinitions;
     
