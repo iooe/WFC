@@ -22,6 +22,7 @@ public class MainViewModel : INotifyPropertyChanged
     private CancellationTokenSource _cancellationTokenSource;
 
     public ICommand ApplyPluginChangesCommand { get; }
+
     /// <summary>
     /// Apply all plugin changes and refresh configuration
     /// </summary>
@@ -30,17 +31,17 @@ public class MainViewModel : INotifyPropertyChanged
         // Перезагружаем все правила и конфигурации плиток
         _pluginManager.RefreshTileDefinitions();
         _tileConfigManager.Initialize();
-    
+
         // Обновляем список доступных плиток
         UpdateAvailableTiles();
-    
+
         // Сохраняем настройки плагинов
         _pluginManager.SavePluginPreferences();
-    
+
         Status = "Plugin changes applied successfully";
         Console.WriteLine("Plugin changes applied");
     }
-    
+
     public event PropertyChangedEventHandler PropertyChanged;
 
     // Commands
@@ -53,6 +54,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     // Progress tracking
     private float _progress;
+
     public float Progress
     {
         get => _progress;
@@ -65,6 +67,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     // Status message
     private string _status = "Ready";
+
     public string Status
     {
         get => _status;
@@ -77,6 +80,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     // Grid dimensions
     private int _gridWidth = 15;
+
     public int GridWidth
     {
         get => _gridWidth;
@@ -88,6 +92,7 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     private int _gridHeight = 15;
+
     public int GridHeight
     {
         get => _gridHeight;
@@ -100,6 +105,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     // Debug rendering
     private bool _isAnimationEnabled = false;
+
     public bool IsAnimationEnabled
     {
         get => _isAnimationEnabled;
@@ -112,6 +118,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     // Random seed
     private string _seedText = "";
+
     public string SeedText
     {
         get => _seedText;
@@ -124,6 +131,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     // Generated tiles
     private ObservableCollection<TileDisplay> _gridTiles;
+
     public ObservableCollection<TileDisplay> GridTiles
     {
         get => _gridTiles;
@@ -142,7 +150,7 @@ public class MainViewModel : INotifyPropertyChanged
 
     // Constructor
     public MainViewModel(
-        IWFCService wfcService, 
+        IWFCService wfcService,
         IExporterFactory exporterFactory,
         PluginManager pluginManager,
         TileConfigManager tileConfigManager)
@@ -151,13 +159,13 @@ public class MainViewModel : INotifyPropertyChanged
         _exporterFactory = exporterFactory;
         _pluginManager = pluginManager;
         _tileConfigManager = tileConfigManager;
-        
+
         _wfcService.ProgressChanged += OnProgressChanged;
 
         Tiles = new ObservableCollection<Tile>();
         GridTiles = new ObservableCollection<TileDisplay>();
         AvailablePlugins = new ObservableCollection<PluginViewModel>();
-        
+
         // Initialize commands
         GenerateCommand = new AsyncRelayCommand(GenerateAsync);
         CancelCommand = new RelayCommand(Cancel);
@@ -166,6 +174,11 @@ public class MainViewModel : INotifyPropertyChanged
         ExportAsTilesCommand = new AsyncRelayCommand(ExportAsTilesAsync);
         TogglePluginCommand = new RelayCommand<PluginViewModel>(TogglePlugin);
         ApplyPluginChangesCommand = new RelayCommand(ApplyPluginChanges);
+
+        // Zoom Render Commands
+        ZoomInCommand = new RelayCommand(ZoomIn);
+        ZoomOutCommand = new RelayCommand(ZoomOut);
+        ResetZoomCommand = new RelayCommand(ResetZoom);
 
         // Initialize plugins and tile configuration
         InitializePlugins();
@@ -179,19 +192,19 @@ public class MainViewModel : INotifyPropertyChanged
         try
         {
             Status = "Loading plugins...";
-            
+
             // Load plugins
             _pluginManager.LoadPlugins();
-            
+
             // Initialize tile configuration
             _tileConfigManager.Initialize();
-            
+
             // Update available tiles
             UpdateAvailableTiles();
-            
+
             // Update available plugins list
             UpdatePluginsList();
-            
+
             Status = $"Loaded {_pluginManager.Plugins.Count} plugins with {Tiles.Count} tiles";
         }
         catch (Exception ex)
@@ -207,10 +220,10 @@ public class MainViewModel : INotifyPropertyChanged
     private void UpdateAvailableTiles()
     {
         Tiles.Clear();
-        
+
         // Create settings to get tile instances
         var settings = _tileConfigManager.CreateSettings(1, 1);
-        
+
         // Add all tiles to the list
         foreach (var tile in settings.Tiles)
         {
@@ -224,7 +237,7 @@ public class MainViewModel : INotifyPropertyChanged
     private void UpdatePluginsList()
     {
         AvailablePlugins.Clear();
-        
+
         foreach (var plugin in _pluginManager.Plugins)
         {
             AvailablePlugins.Add(new PluginViewModel(plugin));
@@ -240,16 +253,16 @@ public class MainViewModel : INotifyPropertyChanged
         {
             // Запоминаем старое состояние для протоколирования
             bool wasEnabled = pluginViewModel.Enabled;
-        
+
             // Изменяем состояние плагина через PluginManager
             _pluginManager.TogglePlugin(pluginViewModel.Id, pluginViewModel.Enabled);
-        
+
             // Важно: явно переинициализируем конфигурацию плиток
             _tileConfigManager.Initialize();
-        
+
             // Обновляем список доступных плиток
             UpdateAvailableTiles();
-        
+
             // Протоколируем изменения
             Status = $"Plugin '{pluginViewModel.Name}' {(pluginViewModel.Enabled ? "enabled" : "disabled")}";
             Console.WriteLine($"Plugin {pluginViewModel.Name} toggled from {wasEnabled} to {pluginViewModel.Enabled}");
@@ -298,8 +311,8 @@ public class MainViewModel : INotifyPropertyChanged
 
             // Create settings for generation
             var settings = _tileConfigManager.CreateSettings(
-                safeGridWidth, 
-                safeGridHeight, 
+                safeGridWidth,
+                safeGridHeight,
                 IsAnimationEnabled,
                 seed);
 
@@ -504,5 +517,46 @@ public class MainViewModel : INotifyPropertyChanged
         {
             Status = $"Error exporting tiles: {ex.Message}";
         }
+    }
+    
+
+    // Zoom properties and commands
+    private double _zoomLevel = 1.0;
+
+    public double ZoomLevel
+    {
+        get => _zoomLevel;
+        set
+        {
+            if (Math.Abs(_zoomLevel - value) > 0.01)
+            {
+                _zoomLevel = Math.Clamp(value, 0.1, 5.0); // Limit zoom between 10% and 500%
+                OnPropertyChanged(nameof(ZoomLevel));
+                OnPropertyChanged(nameof(ZoomPercentage));
+            }
+        }
+    }
+
+    public string ZoomPercentage => $"{ZoomLevel * 100:0}%";
+
+    public ICommand ZoomInCommand { get; }
+    public ICommand ZoomOutCommand { get; }
+    public ICommand ResetZoomCommand { get; }
+
+
+// Zoom methods
+    private void ZoomIn()
+    {
+        ZoomLevel += 0.1;
+    }
+
+    private void ZoomOut()
+    {
+        ZoomLevel -= 0.1;
+    }
+
+    private void ResetZoom()
+    {
+        ZoomLevel = 1.0;
     }
 }

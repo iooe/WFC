@@ -2,7 +2,12 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:WFC"
+             xmlns:services="clr-namespace:WFC.Services"
+             xmlns:render="clr-namespace:WFC.Services.Render"
              Startup="OnStartup">
     <Application.Resources>
+        <services:GridSizeConverter x:Key="GridSizeConverter" />
+        <render:ViewportConverter x:Key="ViewportConverter" />
+        <render:MinimapConverter x:Key="MinimapConverter" />
     </Application.Resources>
 </Application>

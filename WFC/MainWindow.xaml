@@ -4,170 +4,493 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:services="clr-namespace:WFC.Services"
+        xmlns:local="clr-namespace:WFC"
         mc:Ignorable="d"
-        Title="WFC Generator" Height="800" Width="1024">
+        Title="WFC Generator" Height="800" Width="1200"
+        Background="#F5F5F5"
+        WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
         <services:GridSizeConverter x:Key="GridSizeConverter" />
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#1E88E5" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Padding" Value="15,8" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1976D2" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#1565C0" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#BDBDBD" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#E0E0E0" />
+            <Setter Property="Foreground" Value="#424242" />
+            <Setter Property="Padding" Value="15,8" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#BDBDBD" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#9E9E9E" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <Style x:Key="GroupBoxStyle" TargetType="GroupBox">
+            <Setter Property="BorderBrush" Value="#E0E0E0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="Margin" Value="0,0,0,15" />
+            <Setter Property="HeaderTemplate">
+                <Setter.Value>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" 
+                                   FontWeight="SemiBold" 
+                                   FontSize="14"
+                                   Foreground="#424242" 
+                                   Margin="0,0,0,5"/>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <Style x:Key="CheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="Margin" Value="0,5" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        
+        <Style TargetType="TextBox">
+            <Setter Property="Padding" Value="8,5" />
+            <Setter Property="BorderBrush" Value="#BDBDBD" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="White" />
+        </Style>
+        
+        <Style x:Key="LabelStyle" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,10,0,5" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="#424242" />
+        </Style>
+        
+        <Style x:Key="ZoomButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Background" Value="#FFFFFF" />
+            <Setter Property="BorderBrush" Value="#E0E0E0" />
+            <Setter Property="Foreground" Value="#424242" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="1"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F5F5F5" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="TabControlStyle" TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+
+        <Style x:Key="TabItemStyle" TargetType="TabItem">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border Name="Border" Margin="0,0,4,0" 
+                                BorderThickness="0,0,0,2" 
+                                BorderBrush="Transparent"
+                                Background="Transparent">
+                            <ContentPresenter x:Name="ContentSite"
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Center"
+                                              ContentSource="Header"
+                                              Margin="10,5"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Border" Property="BorderBrush" Value="#1E88E5"/>
+                                <Setter Property="Foreground" Value="#1E88E5"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="False">
+                                <Setter Property="Foreground" Value="#757575"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="#1E88E5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PluginCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+            <Setter Property="Padding" Value="10"/>
+        </Style>
     </Window.Resources>
 
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="250" />
-        </Grid.ColumnDefinitions>
-
-        <!-- WFC Grid Area -->
-        <Border Grid.Column="0"
-                BorderBrush="Gray"
-                BorderThickness="1"
-                Margin="20"
-                Name="GridContainer">
-            <!-- Using a Viewbox for automatic scaling -->
-            <Viewbox Stretch="Uniform">
-                <Canvas Width="{Binding GridWidth, Converter={StaticResource GridSizeConverter}}"
-                        Height="{Binding GridHeight, Converter={StaticResource GridSizeConverter}}">
-                    <ItemsControl ItemsSource="{Binding GridTiles}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <Canvas />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemContainerStyle>
-                            <Style TargetType="ContentPresenter">
-                                <Setter Property="Canvas.Left" Value="{Binding X}" />
-                                <Setter Property="Canvas.Top" Value="{Binding Y}" />
-                            </Style>
-                        </ItemsControl.ItemContainerStyle>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Image Source="{Binding Image}"
-                                       Width="100"
-                                       Height="100"
-                                       RenderOptions.BitmapScalingMode="NearestNeighbor" />
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </Canvas>
-            </Viewbox>
+        <!-- Top bar -->
+        <Border Background="#2196F3" Height="50" VerticalAlignment="Top" 
+                Panel.ZIndex="100">
+            <Grid>
+                <TextBlock Text="WFC Generator" 
+                           VerticalAlignment="Center" 
+                           Margin="20,0" 
+                           Foreground="White" 
+                           FontSize="20" 
+                           FontWeight="SemiBold"/>
+                
+                <Button Style="{StaticResource PrimaryButton}" 
+                        Content="Generate" 
+                        Command="{Binding GenerateCommand}"
+                        ToolTip="Start the WFC generation process"
+                        HorizontalAlignment="Right"
+                        Margin="0,0,20,0"
+                        Width="120"
+                        Height="36"/>
+            </Grid>
         </Border>
 
-        <!-- Control Panel -->
-        <StackPanel Grid.Column="1" Margin="10">
-            <Button Content="Generate"
-                    Command="{Binding GenerateCommand}"
-                    Height="30"
-                    Margin="0,0,0,10" />
+        <!-- Main content -->
+        <Grid Margin="0,50,0,30">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="350" />
+            </Grid.ColumnDefinitions>
 
-            <Button Content="Cancel"
-                    Command="{Binding CancelCommand}"
-                    Height="30"
-                    Margin="0,0,0,10" />
+            <!-- Grid view area -->
+            <Grid Grid.Column="0" Name="GridContainer">
+                <Border Background="White" 
+                        BorderBrush="#E0E0E0" 
+                        BorderThickness="1" 
+                        Margin="15,15,10,15">
+                    <Grid>
+                        <ScrollViewer Name="MapScrollViewer"
+                                      HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Auto"
+                                      PreviewMouseWheel="MapScrollViewer_PreviewMouseWheel"
+                                      PreviewMouseDown="MapScrollViewer_PreviewMouseDown"
+                                      PreviewMouseMove="MapScrollViewer_PreviewMouseMove"
+                                      PreviewMouseUp="MapScrollViewer_PreviewMouseUp">
+                            <!-- Zoomable container -->
+                            <Grid Name="ZoomableGrid">
+                                <Grid.LayoutTransform>
+                                    <ScaleTransform x:Name="ZoomTransform"
+                                                    ScaleX="{Binding ZoomLevel}"
+                                                    ScaleY="{Binding ZoomLevel}" />
+                                </Grid.LayoutTransform>
 
-            <Button Content="Reset"
-                    Command="{Binding ResetCommand}"
-                    Height="30"
-                    Margin="0,0,0,10" />
+                                <!-- Map content -->
+                                <Canvas Name="TilesCanvas" Width="{Binding GridWidth, Converter={StaticResource GridSizeConverter}}"
+                                        Height="{Binding GridHeight, Converter={StaticResource GridSizeConverter}}">
+                                    <ItemsControl ItemsSource="{Binding GridTiles}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <Canvas />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemContainerStyle>
+                                            <Style TargetType="ContentPresenter">
+                                                <Setter Property="Canvas.Left" Value="{Binding X}" />
+                                                <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                                            </Style>
+                                        </ItemsControl.ItemContainerStyle>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Image Source="{Binding Image}"
+                                                       Width="100"
+                                                       Height="100"
+                                                       RenderOptions.BitmapScalingMode="NearestNeighbor" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Canvas>
+                            </Grid>
+                        </ScrollViewer>
 
-            <GroupBox Header="Export" Margin="0,0,0,10">
-                <StackPanel Margin="5">
-                    <Button Content="Export as PNG"
-                            Command="{Binding ExportAsPngCommand}"
-                            Height="30"
-                            Margin="0,5,0,5" />
+                        <!-- Progress indicator (hidden by default) -->
 
-                    <Button Content="Export as Tiles"
-                            Command="{Binding ExportAsTilesCommand}"
-                            Height="30"
-                            Margin="0,0,0,5" />
-                </StackPanel>
-            </GroupBox>
-
-            <ProgressBar Value="{Binding Progress}"
-                         Height="20"
-                         Margin="0,0,0,10" />
-
-            <TextBlock Text="{Binding Status}"
-                       TextWrapping="Wrap"
-                       Margin="0,0,0,20" />
-
-            <!-- Settings -->
-            <GroupBox Header="Settings" Margin="0,0,0,10">
-                <StackPanel Margin="5">
-                    <TextBlock Text="Grid Size" />
-                    <StackPanel Orientation="Horizontal" Margin="0,5">
-                        <TextBox Text="{Binding GridWidth, UpdateSourceTrigger=PropertyChanged}" Width="50" />
-                        <TextBlock Text=" x " Margin="5,0" />
-                        <TextBox Text="{Binding GridHeight, UpdateSourceTrigger=PropertyChanged}" Width="50" />
-                    </StackPanel>
-                    
-                    <TextBlock Text="Random Seed (optional)" Margin="0,10,0,5" />
-                    <TextBox Text="{Binding SeedText, UpdateSourceTrigger=PropertyChanged}" />
-                    
-                    <CheckBox Content="Enable Debug Render" 
-                              IsChecked="{Binding IsAnimationEnabled}" 
-                              Margin="0,10,0,0"/>
-                </StackPanel>
-            </GroupBox>
-
-            <!-- Available Tiles -->
-            <GroupBox Header="Available Tiles">
-                <ListBox ItemsSource="{Binding Tiles}"
-                         Height="150"
-                         Margin="5">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
+                        <!-- Bottom info bar -->
+                        <Border Background="White" BorderBrush="#E0E0E0" BorderThickness="1" 
+                                VerticalAlignment="Bottom" HorizontalAlignment="Left"
+                                CornerRadius="4" Margin="15,0,0,15"
+                                Padding="10,6">
                             <StackPanel Orientation="Horizontal">
-                                <Image Source="{Binding Image}"
-                                       Width="32"
-                                       Height="32"
-                                       RenderOptions.BitmapScalingMode="NearestNeighbor"
-                                       Margin="0,0,5,0" />
-                                <StackPanel>
-                                    <TextBlock Text="{Binding Name}"
-                                               VerticalAlignment="Center" />
-                                    <TextBlock Text="{Binding Category}"
-                                               VerticalAlignment="Center"
-                                               FontSize="9"
-                                               Foreground="Gray" />
-                                </StackPanel>
+                                <TextBlock Text="Grid: " VerticalAlignment="Center" Foreground="#616161" FontSize="12"/>
+                                <TextBlock Text="{Binding GridWidth}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#424242" Margin="2,0"/>
+                                <TextBlock Text="×" VerticalAlignment="Center" Foreground="#616161" Margin="2,0"/>
+                                <TextBlock Text="{Binding GridHeight}" VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#424242" Margin="2,0,10,0"/>
+                                
+                                <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="0,0,10,0"/>
+                                
+                                <TextBlock Text="Seed: " VerticalAlignment="Center" Foreground="#616161" FontSize="12"/>
+                                <TextBlock Text="{Binding SeedText, TargetNullValue='Random'}" 
+                                           VerticalAlignment="Center" 
+                                           FontWeight="SemiBold" 
+                                           Foreground="#424242" 
+                                           Margin="2,0,0,0"/>
                             </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </GroupBox>
-            <GroupBox Header="Plugins" Margin="0,10,0,0">
-                <StackPanel>
-                    <TextBlock Text="Enable or disable plugins:" Margin="5"/>
-                    <ListBox ItemsSource="{Binding AvailablePlugins}"
-                             Height="150"
-                             Margin="5">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <!-- Используем прямую привязку к команде ViewModel -->
-                                    <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                              VerticalAlignment="Center"
-                                              Margin="0,0,5,0"
-                                              Checked="CheckBox_CheckedChanged"
-                                              Unchecked="CheckBox_CheckedChanged"/>
+                        </Border>
+
+                        <!-- Zoom controls -->
+                        <Border Background="White" BorderBrush="#E0E0E0" BorderThickness="1" 
+                                VerticalAlignment="Bottom" HorizontalAlignment="Right"
+                                CornerRadius="4" Margin="0,0,15,15"
+                                Padding="5">
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="−" 
+                                        Style="{StaticResource ZoomButtonStyle}"
+                                        Command="{Binding ZoomOutCommand}" 
+                                        ToolTip="Zoom Out (Ctrl+-)"
+                                        Margin="0,0,5,0" />
+                                <TextBlock Text="{Binding ZoomPercentage}" 
+                                           VerticalAlignment="Center" 
+                                           HorizontalAlignment="Center"
+                                           Foreground="#424242"
+                                           MinWidth="50"
+                                           TextAlignment="Center"/>
+                                <Button Content="+" 
+                                        Style="{StaticResource ZoomButtonStyle}"
+                                        Command="{Binding ZoomInCommand}"
+                                        ToolTip="Zoom In (Ctrl++)"
+                                        Margin="5,0,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- Sidebar with tabs -->
+            <Border Grid.Column="1" 
+                    Background="White" 
+                    BorderBrush="#E0E0E0" 
+                    BorderThickness="1" 
+                    Margin="10,15,15,15">
+                <TabControl Style="{StaticResource TabControlStyle}">
+                    <!-- Generation Tab -->
+                    <TabItem Header="Generation" Style="{StaticResource TabItemStyle}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="15">
+                            <StackPanel>
+                        
+                                
+                                <!-- Progress bar -->
+                                <ProgressBar Value="{Binding Progress}"
+                                             Height="6"
+                                             Foreground="#2196F3"
+                                             Background="#E0E0E0"
+                                             BorderThickness="0"
+                                             Margin="0,0,0,10" />
+                                <TextBlock Text="{Binding Status}" 
+                                           HorizontalAlignment="Center" 
+                                           Margin="0,0,0,15" 
+                                           Foreground="#616161"
+                                           FontSize="12"/>
+
+                                <!-- Settings -->
+                                <GroupBox Header="Settings" Style="{StaticResource GroupBoxStyle}">
                                     <StackPanel>
-                                        <TextBlock Text="{Binding Name}" FontWeight="Bold"/>
-                                        <TextBlock Text="{Binding PluginType}" 
-                                                   FontSize="9" 
-                                                   Foreground="Gray"/>
+                                        <TextBlock Text="Grid Size" Style="{StaticResource LabelStyle}"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox Grid.Column="0" 
+                                                     Text="{Binding GridWidth, UpdateSourceTrigger=PropertyChanged}" 
+                                                     ToolTip="Width of the generation grid"/>
+                                            <TextBlock Grid.Column="1" Text="×" 
+                                                       VerticalAlignment="Center" 
+                                                       HorizontalAlignment="Center" 
+                                                       Margin="10,0" 
+                                                       FontSize="16"/>
+                                            <TextBox Grid.Column="2" 
+                                                     Text="{Binding GridHeight, UpdateSourceTrigger=PropertyChanged}" 
+                                                     ToolTip="Height of the generation grid"/>
+                                        </Grid>
+
+                                        <TextBlock Text="Random Seed (optional)" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox Text="{Binding SeedText, UpdateSourceTrigger=PropertyChanged}"
+                                                 ToolTip="Enter a seed value for reproducible generation"/>
+
+                                        <CheckBox Content="Enable Debug Render"
+                                                  IsChecked="{Binding IsAnimationEnabled}"
+                                                  Style="{StaticResource CheckBoxStyle}"
+                                                  ToolTip="Show the generation process step by step"
+                                                  Margin="0,10,0,0" />
                                     </StackPanel>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                    <!-- Добавляем кнопку для явного применения изменений -->
-                    <Button Content="Apply Plugin Changes" 
-                            Command="{Binding ApplyPluginChangesCommand}"
-                            Margin="5,5,5,0" 
-                            HorizontalAlignment="Right"/>
-                </StackPanel>
-            </GroupBox>
-        </StackPanel>
+                                </GroupBox>
+
+                                <!-- Export controls -->
+                                <GroupBox Header="Export" Style="{StaticResource GroupBoxStyle}">
+                                    <UniformGrid Columns="2">
+                                        <Button Content="Export PNG"
+                                                Command="{Binding ExportAsPngCommand}"
+                                                ToolTip="Save the generated map as a PNG image"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Margin="0,0,5,0" />
+
+                                        <Button Content="Export Tiles"
+                                                Command="{Binding ExportAsTilesCommand}"
+                                                ToolTip="Export the generated map as individual tiles"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Margin="5,0,0,0" />
+                                    </UniformGrid>
+                                </GroupBox>
+
+                                <!-- Current Generation Information -->
+                                <GroupBox Header="Generation Info" Style="{StaticResource GroupBoxStyle}"
+                                          Visibility="{Binding HasCompletedGeneration, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition/>
+                                                <RowDefinition/>
+                                            </Grid.RowDefinitions>
+                                            
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Grid Size:" Margin="0,0,10,5" Foreground="#616161"/>
+                                            
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Seed:" Margin="0,0,10,0" Foreground="#616161"/>
+                                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SeedText, TargetNullValue='Random'}" FontWeight="SemiBold"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </GroupBox>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+                    
+                    <!-- Plugins Tab -->
+                    <TabItem Header="Plugins" Style="{StaticResource TabItemStyle}">
+                        <DockPanel LastChildFill="True">
+                            <!-- Apply button at the bottom -->
+                            <Border DockPanel.Dock="Bottom" Padding="15">
+                                <Button Content="Apply Changes"
+                                        Command="{Binding ApplyPluginChangesCommand}"
+                                        Style="{StaticResource PrimaryButton}"
+                                        HorizontalAlignment="Right"
+                                        Width="120" />
+                            </Border>
+                            
+                            <!-- List of plugins -->
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="15,15,15,0">
+                                <ItemsControl ItemsSource="{Binding AvailablePlugins}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Style="{StaticResource PluginCardStyle}">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    
+                                                    <!-- Plugin enable/disable checkbox -->
+                                                    <CheckBox Grid.Column="0" 
+                                                              IsChecked="{Binding Enabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                              VerticalAlignment="Center" 
+                                                              Margin="0,0,10,0"
+                                                              Checked="CheckBox_CheckedChanged"
+                                                              Unchecked="CheckBox_CheckedChanged" />
+                                                    
+                                                    <!-- Plugin info -->
+                                                    <StackPanel Grid.Column="1">
+                                                        <!-- Plugin header -->
+                                                        <DockPanel LastChildFill="True">
+                                                            <!-- Plugin type -->
+                                                            <Border Background="#E3F2FD" 
+                                                                    CornerRadius="3"
+                                                                    Padding="6,2"
+                                                                    DockPanel.Dock="Right">
+                                                                <TextBlock Text="{Binding PluginType}" 
+                                                                           FontSize="10" 
+                                                                           Foreground="#1976D2"
+                                                                           FontWeight="SemiBold"/>
+                                                            </Border>
+                                                            
+                                                            <!-- Plugin name -->
+                                                            <TextBlock Text="{Binding Name}" 
+                                                                       FontWeight="SemiBold" 
+                                                                       Foreground="#424242"
+                                                                       VerticalAlignment="Center"/>
+                                                        </DockPanel>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </DockPanel>
+                    </TabItem>
+                </TabControl>
+            </Border>
+        </Grid>
+
+        <!-- Status bar -->
+        <Border Background="#EEEEEE" Height="30" VerticalAlignment="Bottom">
+            <TextBlock Text="{Binding Status}" 
+                       VerticalAlignment="Center" 
+                       Margin="20,0" 
+                       Foreground="#424242" 
+                       FontSize="12"/>
+        </Border>
     </Grid>
 </Window>
