@@ -5,26 +5,28 @@
 /// </summary>
 public class Cell
 {
+    private int _lastCount;
+
     /// <summary>
     /// Possible states for this cell
     /// </summary>
     public HashSet<int> PossibleStates { get; }
-    
+
     /// <summary>
     /// Whether this cell has collapsed to a single state
     /// </summary>
     public bool Collapsed => PossibleStates.Count == 1;
-    
+
     /// <summary>
     /// The collapsed state of this cell, or null if not collapsed
     /// </summary>
     public int? CollapsedState => Collapsed ? PossibleStates.First() : null;
-    
+
     /// <summary>
     /// Entropy of this cell (lower entropy = fewer possible states)
     /// </summary>
     public float Entropy { get; private set; }
-    
+
     /// <summary>
     /// Create a new cell with all possible states
     /// </summary>
@@ -34,7 +36,7 @@ public class Cell
         PossibleStates = new HashSet<int>(Enumerable.Range(0, numberOfStates));
         UpdateEntropy();
     }
-    
+
     /// <summary>
     /// Create a new cell with specific possible states
     /// </summary>
@@ -44,7 +46,7 @@ public class Cell
         PossibleStates = new HashSet<int>(possibleStates);
         UpdateEntropy();
     }
-    
+
     /// <summary>
     /// Collapse this cell to a specific state
     /// </summary>
@@ -55,12 +57,12 @@ public class Cell
         {
             throw new InvalidOperationException($"Cannot collapse to state {state} as it's not in possible states");
         }
-        
+
         PossibleStates.Clear();
         PossibleStates.Add(state);
         Entropy = 0; // Fully determined state has zero entropy
     }
-    
+
     /// <summary>
     /// Constrain possible states based on a predicate
     /// </summary>
@@ -69,26 +71,26 @@ public class Cell
     public bool Constrain(Func<int, bool> predicate)
     {
         int beforeCount = PossibleStates.Count;
-        
+
         // Find states to remove
         var statesToRemove = PossibleStates.Where(s => !predicate(s)).ToList();
-        
+
         // Remove invalid states
         foreach (var state in statesToRemove)
         {
             PossibleStates.Remove(state);
         }
-        
+
         // Update entropy if states changed
         if (PossibleStates.Count != beforeCount)
         {
             UpdateEntropy();
             return true;
         }
-        
+
         return false;
     }
-    
+
     /// <summary>
     /// Constrain possible states to a specific set
     /// </summary>
@@ -99,13 +101,19 @@ public class Cell
         var allowedSet = new HashSet<int>(allowedStates);
         return Constrain(s => allowedSet.Contains(s));
     }
-    
+
     /// <summary>
     /// Update the entropy of this cell
     /// </summary>
     private void UpdateEntropy()
     {
         int count = PossibleStates.Count;
+        
+        _lastCount = count;
+        
+        if (_lastCount == count)
+            return; // Skip recalculation if count hasn ’ t changed
+
         if (count <= 1)
         {
             Entropy = 0; // Fully determined state has zero entropy
