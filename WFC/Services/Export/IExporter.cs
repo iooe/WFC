@@ -5,5 +5,4 @@ namespace WFC.Services.Export;
 
 public interface IExporter
 {
-    Task<string> ExportAsync(IEnumerable<TileDisplay> tiles, int gridWidth, int gridHeight);
-}
+    Task<string> ExportAsync(IEnumerable<TileDisplay> tiles, int gridWidth, int gridHeight, string exportPath = null);}

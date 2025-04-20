@@ -170,24 +170,26 @@ namespace WFC.Services.BatchGeneration
                 case ExportFormat.PNG:
                 {
                     var exporter = _exporterFactory.CreateExporter(ExportType.Png);
-                    string result = await exporter.ExportAsync(tileDisplays, mapInfo.Width, mapInfo.Height);
+                    string result =
+                        await exporter.ExportAsync(tileDisplays, mapInfo.Width, mapInfo.Height, pngFilePath);
                     mapInfo.FilePath = pngFilePath;
                 }
                     break;
                 case ExportFormat.Tiles:
                 {
                     var exporter = _exporterFactory.CreateExporter(ExportType.Tiles);
-                    string result = await exporter.ExportAsync(tileDisplays, mapInfo.Width, mapInfo.Height);
+                    string result =
+                        await exporter.ExportAsync(tileDisplays, mapInfo.Width, mapInfo.Height, tilesFolder);
                     mapInfo.FilePath = tilesFolder;
                 }
                     break;
                 case ExportFormat.Both:
                 {
                     var pngExporter = _exporterFactory.CreateExporter(ExportType.Png);
-                    await pngExporter.ExportAsync(tileDisplays, mapInfo.Width, mapInfo.Height);
+                    await pngExporter.ExportAsync(tileDisplays, mapInfo.Width, mapInfo.Height, pngFilePath);
 
                     var tilesExporter = _exporterFactory.CreateExporter(ExportType.Tiles);
-                    await tilesExporter.ExportAsync(tileDisplays, mapInfo.Width, mapInfo.Height);
+                    await tilesExporter.ExportAsync(tileDisplays, mapInfo.Width, mapInfo.Height, tilesFolder);
 
                     mapInfo.FilePath = pngFilePath;
                 }

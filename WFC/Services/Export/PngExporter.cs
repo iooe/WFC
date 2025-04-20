@@ -13,26 +13,36 @@ public class PngExporter : ExporterBase
         _visualHelper = visualHelper;
     }
 
-    public override async Task<string> ExportAsync(IEnumerable<TileDisplay> tiles, int gridWidth, int gridHeight)
+    public override async Task<string> ExportAsync(IEnumerable<TileDisplay> tiles, int gridWidth, int gridHeight, string exportPath = null)
     {
-        // Используем диалог для получения имени выходного файла
-        var filePath = _dialogService.ShowSaveFileDialog(
-            "Export map as PNG",
-            "PNG Image|*.png",
-            ".png",
-            $"WFC_Map_{DateTime.Now:yyyyMMdd_HHmmss}");
+        string filePath;
+        
+        // If export path is provided (batch mode), use it directly
+        if (!string.IsNullOrEmpty(exportPath))
+        {
+            filePath = exportPath;
+        }
+        else
+        {
+            // Otherwise use dialog for manual export (single map)
+            filePath = _dialogService.ShowSaveFileDialog(
+                "Export map as PNG",
+                "PNG Image|*.png",
+                ".png",
+                $"WFC_Map_{DateTime.Now:yyyyMMdd_HHmmss}");
 
-        if (string.IsNullOrEmpty(filePath))
-            return "Export cancelled";
+            if (string.IsNullOrEmpty(filePath))
+                return "Export cancelled";
+        }
 
-        // Вычисляем точные размеры
+        // Calculate iamge sizes
         int width = gridWidth * 100;
         int height = gridHeight * 100;
 
-        // Создаем Canvas для экспорта
+        // Create canvas
         var exportCanvas = CreateExportCanvas(tiles, gridWidth, gridHeight);
 
-        // Используем helper для захвата и сохранения
+        // Capture and Save
         _visualHelper.CaptureElementToPng(exportCanvas, filePath, width, height);
 
         return $"Map exported as PNG to {filePath}";

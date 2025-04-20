@@ -5,66 +5,78 @@ using Image = System.Windows.Controls.Image;
 
 namespace WFC.Services.Export;
 
- public class TilesExporter : ExporterBase
+public class TilesExporter : ExporterBase
+{
+    private readonly IDialogService _dialogService;
+    private readonly IFileSystem _fileSystem;
+    private readonly IVisualHelper _visualHelper;
+
+    public TilesExporter(IDialogService dialogService, IFileSystem fileSystem, IVisualHelper visualHelper)
     {
-        private readonly IDialogService _dialogService;
-        private readonly IFileSystem _fileSystem;
-        private readonly IVisualHelper _visualHelper;
+        _dialogService = dialogService;
+        _fileSystem = fileSystem;
+        _visualHelper = visualHelper;
+    }
 
-        public TilesExporter(IDialogService dialogService, IFileSystem fileSystem, IVisualHelper visualHelper)
+    public override async Task<string> ExportAsync(IEnumerable<TileDisplay> tiles, int gridWidth, int gridHeight,
+        string exportPath = null)
+    {
+        string folderPath;
+
+        // If export path is provided (batch mode), use it directly
+        if (!string.IsNullOrEmpty(exportPath))
         {
-            _dialogService = dialogService;
-            _fileSystem = fileSystem;
-            _visualHelper = visualHelper;
+            folderPath = exportPath;
+            _fileSystem.CreateDirectory(folderPath);
         }
-
-        public override async Task<string> ExportAsync(IEnumerable<TileDisplay> tiles, int gridWidth, int gridHeight)
+        else
         {
-            // Используем диалог для получения директории вывода
-            var folderPath = _dialogService.ShowFolderBrowserDialog("Select folder to export tiles");
+            // Otherwise use dialog for manual export (single map)
+            folderPath = _dialogService.ShowFolderBrowserDialog("Select folder to export tiles");
 
             if (string.IsNullOrEmpty(folderPath))
                 return "Export cancelled";
 
-            // Создаем поддиректорию с временной меткой
+            // Create subdirectory with timestamp
             string subfolder = $"WFC_Tiles_{DateTime.Now:yyyyMMdd_HHmmss}";
-            string fullPath = Path.Combine(folderPath, subfolder);
-            _fileSystem.CreateDirectory(fullPath);
+            folderPath = Path.Combine(folderPath, subfolder);
+            _fileSystem.CreateDirectory(folderPath);
+        }
 
-            // Экспортируем каждую плитку как отдельное изображение
-            int count = 0;
-            for (int y = 0; y < gridHeight; y++)
+        // Export each tile as a separate image
+        int count = 0;
+        for (int y = 0; y < gridHeight; y++)
+        {
+            for (int x = 0; x < gridWidth; x++)
             {
-                for (int x = 0; x < gridWidth; x++)
+                // Find tile at this position
+                var tile = tiles.FirstOrDefault(t =>
+                    Math.Abs(t.X - (x * 100)) < 0.1 &&
+                    Math.Abs(t.Y - (y * 100)) < 0.1);
+
+                if (tile != null)
                 {
-                    // Находим плитку в этой позиции
-                    var tile = tiles.FirstOrDefault(t =>
-                        Math.Abs(t.X - (x * 100)) < 0.1 &&
-                        Math.Abs(t.Y - (y * 100)) < 0.1);
+                    // Create filename based on coordinates
+                    string filename = Path.Combine(folderPath, $"tile_x{x}_y{y}.png");
 
-                    if (tile != null)
+                    // Create small canvas with just this tile
+                    var canvas = new Canvas { Width = 100, Height = 100 };
+                    var image = new Image
                     {
-                        // Создаем имя файла на основе координат
-                        string filename = Path.Combine(fullPath, $"tile_x{x}_y{y}.png");
+                        Source = tile.Image,
+                        Width = 100,
+                        Height = 100
+                    };
+                    canvas.Children.Add(image);
 
-                        // Создаем маленький canvas только с этой плиткой
-                        var canvas = new Canvas { Width = 100, Height = 100 };
-                        var image = new Image
-                        {
-                            Source = tile.Image,
-                            Width = 100,
-                            Height = 100
-                        };
-                        canvas.Children.Add(image);
+                    // Save tile as PNG
+                    _visualHelper.CaptureElementToPng(canvas, filename, 100, 100);
 
-                        // Сохраняем плитку как PNG
-                        _visualHelper.CaptureElementToPng(canvas, filename, 100, 100);
-
-                        count++;
-                    }
+                    count++;
                 }
             }
-
-            return $"Exported {count} tiles to {fullPath}";
         }
+
+        return $"Exported {count} tiles to {folderPath}";
     }
+}
