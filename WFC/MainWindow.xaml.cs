@@ -17,7 +17,7 @@ namespace WFC
         private Point _lastMousePosition;
         private bool _isPanning;
 
-// Mouse wheel handler with zoom-to-cursor functionality
+        // Mouse wheel handler with zoom-to-cursor functionality
         private void MapScrollViewer_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
             e.Handled = true;
@@ -61,7 +61,7 @@ namespace WFC
             }
         }
 
-// Event handlers for map panning
+        // Event handlers for map panning
         private void MapScrollViewer_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
             // Start panning when right mouse button is pressed
@@ -119,14 +119,6 @@ namespace WFC
             InitializeComponent();
         }
 
-// Add this method to MainWindow.xaml.cs
-        public UIElement GetTileContainer()
-        {
-            // Return the Canvas that contains all the tiles
-            // You may need to adjust this depending on your exact XAML structure
-            return TilesCanvas;
-        }
-
         // Constructor that accepts a view model
         public MainWindow(MainViewModel viewModel)
         {
@@ -142,44 +134,29 @@ namespace WFC
 
         private void CheckBox_CheckedChanged(object sender, RoutedEventArgs e)
         {
-            // Логируем для отладки
-            Console.WriteLine("CheckBox_CheckedChanged вызван");
-
-            // Получаем CheckBox, который вызвал событие
             var checkBox = sender as CheckBox;
             if (checkBox == null)
             {
-                Console.WriteLine("CheckBox равен null");
                 return;
             }
 
-            // Получаем контекст данных (PluginViewModel)
             var pluginVM = checkBox.DataContext as PluginViewModel;
             if (pluginVM == null)
             {
-                Console.WriteLine("PluginViewModel равен null");
                 return;
             }
 
-            Console.WriteLine($"Плагин: {pluginVM.Name}, новое состояние: {pluginVM.Enabled}");
+            //Console.WriteLine($"Plugin: {pluginVM.Name}, the new state: {pluginVM.Enabled}");
 
-            // Получаем ViewModel окна
             var viewModel = DataContext as MainViewModel;
             if (viewModel == null)
             {
-                Console.WriteLine("MainViewModel равен null");
                 return;
             }
 
-            // Вызываем команду
             if (viewModel.TogglePluginCommand.CanExecute(pluginVM))
             {
-                Console.WriteLine("Выполняем команду TogglePluginCommand");
                 viewModel.TogglePluginCommand.Execute(pluginVM);
-            }
-            else
-            {
-                Console.WriteLine("TogglePluginCommand недоступна для выполнения");
             }
         }
     }
