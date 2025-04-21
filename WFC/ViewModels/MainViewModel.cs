@@ -9,6 +9,10 @@ using WFC.Services;
 using WFC.Services.Export;
 using WFC.Plugins;
 using WFC.Services.BatchGeneration;
+using WFC.Models.NeuralNetwork;
+using WFC.Factories.Model;
+using Microsoft.ML;
+using WFC.Services.ML;
 
 namespace WFC.ViewModels
 {
@@ -25,10 +29,17 @@ namespace WFC.ViewModels
         private readonly PluginManager _pluginManager;
         private readonly TileConfigManager _tileConfigManager;
         private readonly BatchGenerationService _batchGenerationService;
+        private readonly IModelFactory _modelFactory;
+
+        // Neural network model
+        private IQualityAssessmentModel _qualityModel;
 
         // Cancellation
         private CancellationTokenSource _cancellationTokenSource;
         private CancellationTokenSource _batchCancellationTokenSource;
+
+        // Training data collector
+        private TrainingDataCollector _trainingDataCollector;
 
         #endregion
 
@@ -43,18 +54,23 @@ namespace WFC.ViewModels
             PluginManager pluginManager,
             TileConfigManager tileConfigManager,
             IDialogService dialogService,
-            IFileSystem fileSystem)
+            IFileSystem fileSystem,
+            IModelFactory modelFactory = null)
         {
             _wfcService = wfcService;
             _exporterFactory = exporterFactory;
             _pluginManager = pluginManager;
             _tileConfigManager = tileConfigManager;
+            _modelFactory = modelFactory ?? new DefaultModelFactory();
 
             // Create batch generation service
             _batchGenerationService = new BatchGenerationService(
                 _wfcService,
                 _exporterFactory,
                 _tileConfigManager);
+
+            // Initialize training data collector
+            _trainingDataCollector = new TrainingDataCollector();
 
             // Subscribe to events
             _wfcService.ProgressChanged += OnProgressChanged;
@@ -87,8 +103,15 @@ namespace WFC.ViewModels
             IncreaseBatchMapCountCommand = new RelayCommand(() => BatchMapCount++);
             DecreaseBatchMapCountCommand = new RelayCommand(() => BatchMapCount--);
 
+            // Initialize neural network commands
+            RateMapCommand = new RelayCommand<string>(RateMap);
+            TrainModelCommand = new AsyncRelayCommand(TrainModelAsync);
+
             // Initialize plugins and tile configuration
             InitializePlugins();
+
+            // Initialize the quality model
+            InitializeQualityModel();
         }
 
         #endregion
@@ -130,6 +153,10 @@ namespace WFC.ViewModels
         public ICommand OpenBatchExportFolderCommand { get; }
         public ICommand IncreaseBatchMapCountCommand { get; }
         public ICommand DecreaseBatchMapCountCommand { get; }
+
+        // Neural Network Commands
+        public ICommand RateMapCommand { get; }
+        public ICommand TrainModelCommand { get; }
 
         #endregion
 
@@ -415,6 +442,70 @@ namespace WFC.ViewModels
 
         #endregion
 
+        #region Properties - Neural Network
+
+        // Quality assessment
+        private QualityAssessment _qualityAssessment;
+
+        public QualityAssessment QualityAssessment
+        {
+            get => _qualityAssessment;
+            set
+            {
+                _qualityAssessment = value;
+                OnPropertyChanged(nameof(QualityAssessment));
+                OnPropertyChanged(nameof(HasQualityAssessment));
+                OnPropertyChanged(nameof(QualityScoreDisplay));
+                OnPropertyChanged(nameof(QualityScorePercent));
+            }
+        }
+
+        public bool HasQualityAssessment => _qualityAssessment != null;
+
+        public string QualityScoreDisplay =>
+            _qualityAssessment != null ? $"{_qualityAssessment.OverallScore:F2}" : "N/A";
+
+        public int QualityScorePercent => _qualityAssessment != null ? (int)(_qualityAssessment.OverallScore * 100) : 0;
+
+        // Training
+        private bool _saveForTraining = true;
+
+        public bool SaveForTraining
+        {
+            get => _saveForTraining;
+            set
+            {
+                _saveForTraining = value;
+                OnPropertyChanged(nameof(SaveForTraining));
+            }
+        }
+
+        private bool _isTraining = false;
+
+        public bool IsTraining
+        {
+            get => _isTraining;
+            set
+            {
+                _isTraining = value;
+                OnPropertyChanged(nameof(IsTraining));
+            }
+        }
+
+        private string _trainingStatus = "";
+
+        public string TrainingStatus
+        {
+            get => _trainingStatus;
+            set
+            {
+                _trainingStatus = value;
+                OnPropertyChanged(nameof(TrainingStatus));
+            }
+        }
+
+        #endregion
+
         #region Methods - Main
 
         /// <summary>
@@ -444,6 +535,37 @@ namespace WFC.ViewModels
             {
                 Status = $"Error loading plugins: {ex.Message}";
                 Console.WriteLine($"Error loading plugins: {ex}");
+            }
+        }
+
+        /// <summary>
+        /// Initialize the quality assessment model
+        /// </summary>
+        private void InitializeQualityModel()
+        {
+            try
+            {
+                _qualityModel = _modelFactory.CreateModel(ModelType.Advanced);
+
+                // Check for saved model
+                string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "quality_model.zip");
+                if (File.Exists(modelPath))
+                {
+                    _qualityModel = _modelFactory.CreateModel(ModelType.Custom, modelPath);
+                    Console.WriteLine("Loaded trained quality model");
+                }
+                else
+                {
+                    // Use default model
+                    _qualityModel = _modelFactory.CreateModel(ModelType.Basic);
+                    Console.WriteLine("Using default quality model");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to initialize quality model: {ex.Message}");
+                // Fall back to basic model
+                _qualityModel = _modelFactory.CreateModel(ModelType.Basic);
             }
         }
 
@@ -587,6 +709,17 @@ namespace WFC.ViewModels
                         await UpdateGridDisplay(result.Grid, settings);
                         Status = "WFC generation completed successfully";
                         HasCompletedGeneration = true;
+
+                        // Assess quality
+                        await AssessQuality(result.Grid);
+
+                        // Save for training if enabled
+                        if (SaveForTraining)
+                        {
+                            await _trainingDataCollector.SaveGeneratedMapForTraining(
+                                result.Grid, settings, seed?.ToString() ?? "random");
+                            Console.WriteLine("Map saved for training");
+                        }
                     }
                     else
                     {
@@ -609,6 +742,40 @@ namespace WFC.ViewModels
             catch (Exception ex)
             {
                 Status = $"Error: {ex.Message}";
+            }
+        }
+
+        /// <summary>
+        /// Assess the quality of a generated map
+        /// </summary>
+        private async Task AssessQuality(Tile[,] grid)
+        {
+            try
+            {
+                // If model is not initialized, initialize it
+                if (_qualityModel == null)
+                {
+                    InitializeQualityModel();
+                }
+
+                Status = "Assessing map quality...";
+
+                // Evaluate the map
+                QualityAssessment = await _qualityModel.EvaluateAsync(grid);
+
+                // Update status with quality information
+                Status = $"Quality assessment: {QualityScoreDisplay} ({QualityScorePercent}%)";
+
+                // Show first feedback item if available
+                if (QualityAssessment.Feedback != null && QualityAssessment.Feedback.Length > 0)
+                {
+                    Status = QualityAssessment.Feedback[0];
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error assessing quality: {ex.Message}");
+                QualityAssessment = null;
             }
         }
 
@@ -704,6 +871,7 @@ namespace WFC.ViewModels
             GridTiles.Clear();
             Progress = 0;
             Status = "Ready";
+            QualityAssessment = null;
         }
 
         /// <summary>
@@ -899,5 +1067,360 @@ namespace WFC.ViewModels
         }
 
         #endregion
+
+        #region Methods - Neural Network
+
+        /// <summary>
+        /// Rate the current map
+        /// </summary>
+        private void RateMap(string ratingStr)
+        {
+            if (!HasCompletedGeneration)
+                return;
+
+            if (!int.TryParse(ratingStr, out int rating))
+                return;
+
+            // Normalize rating to 0-1 range
+            float normalizedRating = rating / 5.0f;
+
+            try
+            {
+                // Generate map ID
+                string mapId = $"map_{DateTime.Now:yyyyMMdd}_{SeedText}";
+
+                // Show immediate feedback
+                Status = $"Thank you for rating this map {rating}/5!";
+
+                // Save rating in background thread
+                Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _trainingDataCollector.AddUserRating(mapId, normalizedRating);
+                        Console.WriteLine($"Rating {rating}/5 saved successfully for map {mapId}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error saving rating: {ex.Message}");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Status = $"Error processing rating: {ex.Message}";
+                Console.WriteLine($"Rating error: {ex}");
+            }
+        }
+
+        /// <summary>
+        /// Train the quality assessment model
+        /// </summary>
+        private async Task TrainModelAsync()
+        {
+            try
+            {
+                IsTraining = true;
+                TrainingStatus = "Preparing training data...";
+
+                // Create models directory if it doesn't exist
+                string modelsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models");
+                Directory.CreateDirectory(modelsDir);
+
+                // Export training data
+                string trainingDataPath = Path.Combine(modelsDir, "training_data.json");
+                await _trainingDataCollector.ExportTrainingData(trainingDataPath);
+
+                TrainingStatus = "Training model...";
+                Status = "Training neural network model...";
+
+                // Train model
+                var trainer = new ModelTrainer(trainingDataPath);
+                var model = await trainer.TrainModel();
+
+                // Save model
+                string modelPath = Path.Combine(modelsDir, "quality_model.zip");
+                trainer.SaveModel(model, modelPath);
+
+                // Reinitialize quality model
+                _qualityModel = _modelFactory.CreateModel(ModelType.Custom, modelPath);
+
+                TrainingStatus = "Model training completed successfully!";
+                Status = "Neural network training completed";
+            }
+            catch (Exception ex)
+            {
+                TrainingStatus = $"Training failed: {ex.Message}";
+                Status = $"Error training model: {ex.Message}";
+                Console.WriteLine($"Error training model: {ex}");
+            }
+            finally
+            {
+                IsTraining = false;
+            }
+        }
+
+        #endregion
     }
+
+    /// <summary>
+    /// Training data collector for neural network
+    /// </summary>
+    public class TrainingDataCollector
+    {
+        private readonly string _dataFolder;
+        private List<TrainingExample> _examples = new List<TrainingExample>();
+
+        public class TrainingExample
+        {
+            public string MapId { get; set; }
+            public string ImagePath { get; set; }
+            public string MetadataPath { get; set; }
+            public float UserRating { get; set; }
+            public Dictionary<string, float> FeatureValues { get; set; }
+        }
+
+        public TrainingDataCollector(string dataFolder = null)
+        {
+            _dataFolder = dataFolder ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TrainingData");
+            Directory.CreateDirectory(_dataFolder);
+            LoadExistingExamples();
+        }
+
+        public async Task SaveGeneratedMapForTraining(Tile[,] grid, WFCSettings settings, string seedValue)
+        {
+            string mapId = $"map_{DateTime.Now:yyyyMMdd_HHmmss}_{seedValue}";
+            string subfolder = Path.Combine(_dataFolder, mapId);
+            Directory.CreateDirectory(subfolder);
+
+            // Save metadata
+            string metadataPath = Path.Combine(subfolder, "metadata.json");
+            SaveMapMetadata(grid, settings, metadataPath);
+
+            // Add to examples list for later labeling
+            _examples.Add(new TrainingExample
+            {
+                MapId = mapId,
+                ImagePath = "", // Image would be saved separately by export system
+                MetadataPath = metadataPath,
+                UserRating = 0, // Will be set later by user
+                FeatureValues = ExtractFeatures(grid)
+            });
+
+            // Save examples list
+            await SaveExamplesList();
+        }
+
+        private void SaveMapMetadata(Tile[,] grid, WFCSettings settings, string metadataPath)
+        {
+            // Save relevant metadata
+            var metadata = new
+            {
+                Width = grid.GetLength(0),
+                Height = grid.GetLength(1),
+                Seed = settings.Seed,
+                TileCount = CountTiles(grid),
+                TimeGenerated = DateTime.Now.ToString("o")
+            };
+
+            string json = System.Text.Json.JsonSerializer.Serialize(metadata, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+
+            File.WriteAllText(metadataPath, json);
+        }
+
+        private Dictionary<string, int> CountTiles(Tile[,] grid)
+        {
+            var counts = new Dictionary<string, int>();
+
+            foreach (var tile in grid)
+            {
+                if (tile != null)
+                {
+                    string category = tile.Category ?? "unknown";
+                    if (!counts.ContainsKey(category))
+                        counts[category] = 0;
+                    counts[category]++;
+                }
+            }
+
+            return counts;
+        }
+
+        private Dictionary<string, float> ExtractFeatures(Tile[,] grid)
+        {
+            // Extract features for training
+            var features = new Dictionary<string, float>();
+
+            // Calculate basic features
+            int width = grid.GetLength(0);
+            int height = grid.GetLength(1);
+            int totalTiles = width * height;
+
+            // Count tile types
+            var categories = new Dictionary<string, int>();
+            foreach (var tile in grid)
+            {
+                if (tile != null)
+                {
+                    string category = tile.Category ?? "unknown";
+                    if (!categories.ContainsKey(category))
+                        categories[category] = 0;
+                    categories[category]++;
+                }
+            }
+
+            // Convert counts to ratios
+            foreach (var category in categories)
+            {
+                features[$"Ratio_{category.Key}"] = (float)category.Value / totalTiles;
+            }
+
+            // Variety score (unique tiles / total)
+            var uniqueTileIds = new HashSet<string>();
+            foreach (var tile in grid)
+            {
+                if (tile != null)
+                    uniqueTileIds.Add(tile.TileId);
+            }
+
+            features["VarietyScore"] = (float)uniqueTileIds.Count / totalTiles;
+
+            // Transition count
+            int transitions = CountTransitions(grid);
+            features["TransitionCount"] = transitions;
+            features["TransitionDensity"] = (float)transitions / totalTiles;
+
+            return features;
+        }
+
+        private int CountTransitions(Tile[,] grid)
+        {
+            int width = grid.GetLength(0);
+            int height = grid.GetLength(1);
+            int transitions = 0;
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    var current = grid[x, y]?.Category;
+
+                    // Check right
+                    if (x < width - 1)
+                    {
+                        var right = grid[x + 1, y]?.Category;
+                        if (current != right && current != null && right != null)
+                            transitions++;
+                    }
+
+                    // Check down
+                    if (y < height - 1)
+                    {
+                        var down = grid[x, y + 1]?.Category;
+                        if (current != down && current != null && down != null)
+                            transitions++;
+                    }
+                }
+            }
+
+            return transitions;
+        }
+
+        public async Task<bool> AddUserRating(string mapId, float rating)
+        {
+            // Find matching example
+            var example = _examples.FirstOrDefault(e => e.MapId.Contains(mapId));
+            if (example == null)
+            {
+                // Create a new example if not found
+                example = new TrainingExample
+                {
+                    MapId = mapId,
+                    UserRating = rating,
+                    FeatureValues = new Dictionary<string, float>()
+                };
+                _examples.Add(example);
+            }
+            else
+            {
+                example.UserRating = rating;
+            }
+
+            // Save rating to file
+            string ratingPath = Path.Combine(_dataFolder, example.MapId, "rating.json");
+            if (!Directory.Exists(Path.GetDirectoryName(ratingPath)))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(ratingPath));
+            }
+
+            await File.WriteAllTextAsync(ratingPath, System.Text.Json.JsonSerializer.Serialize(
+                new { Rating = rating }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+
+            // Save examples list
+            await SaveExamplesList();
+
+            return true;
+        }
+
+        private async Task SaveExamplesList()
+        {
+            try
+            {
+                string examplesPath = Path.Combine(_dataFolder, "examples.json");
+                string json = System.Text.Json.JsonSerializer.Serialize(
+                    _examples, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                await File.WriteAllTextAsync(examplesPath, json);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving examples list: {ex.Message}");
+                // Продолжаем выполнение даже при ошибке
+            }
+        }
+
+        private void LoadExistingExamples()
+        {
+            string examplesPath = Path.Combine(_dataFolder, "examples.json");
+            if (File.Exists(examplesPath))
+            {
+                try
+                {
+                    string json = File.ReadAllText(examplesPath);
+                    var examples = System.Text.Json.JsonSerializer.Deserialize<List<TrainingExample>>(json);
+                    if (examples != null)
+                    {
+                        _examples = examples;
+                        Console.WriteLine($"Loaded {_examples.Count} existing training examples");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error loading training examples: {ex.Message}");
+                    _examples = new List<TrainingExample>();
+                }
+            }
+        }
+
+        public async Task ExportTrainingData(string outputPath)
+        {
+            // Export all examples with ratings
+            var trainingData = _examples.Where(e => e.UserRating > 0).ToList();
+
+            if (trainingData.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "No rated examples available for training. Please rate some maps first.");
+            }
+
+            await File.WriteAllTextAsync(outputPath, System.Text.Json.JsonSerializer.Serialize(
+                trainingData, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+
+            Console.WriteLine($"Exported {trainingData.Count} training examples to {outputPath}");
+        }
+    }
+
+
 }

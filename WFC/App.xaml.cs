@@ -1,6 +1,8 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.IO;
+using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 using WFC.Factories;
+using WFC.Factories.Model;
 using WFC.Services;
 using WFC.Services.Export;
 using WFC.Services.System;
@@ -19,6 +21,11 @@ namespace WFC
             var services = new ServiceCollection();
             ConfigureServices(services);
             _serviceProvider = services.BuildServiceProvider();
+            
+            // Create required directories
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            Directory.CreateDirectory(Path.Combine(baseDir, "Models"));
+            Directory.CreateDirectory(Path.Combine(baseDir, "TrainingData"));
         }
 
         private void ConfigureServices(IServiceCollection services)
@@ -38,6 +45,9 @@ namespace WFC
             
             // Register WFC service
             services.AddSingleton<IWFCService, DefaultWFCService>();
+            
+            // Register ML
+            services.AddSingleton<IModelFactory, DefaultModelFactory>();
             
             // Register view models and views
             services.AddSingleton<MainViewModel>();
