@@ -383,7 +383,7 @@ namespace WFC.Services.ML
             {
                 OverallScore = -1,
                 DimensionalScores = dimensionalScores,
-                Feedback = GenerateFeedback(-1, dimensionalScores, features)
+                Feedback = new[] { "Model predicted zero assessment." }
             };
         }
 
