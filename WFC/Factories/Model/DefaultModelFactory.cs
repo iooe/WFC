@@ -14,14 +14,14 @@ namespace WFC.Factories.Model
                     return new BasicQualityModel();
                     
                 case ModelType.Advanced:
-                    return new KerasQualityModel();
+                    return new AccordNetQualityModel();
                     
                 case ModelType.Custom:
                     if (string.IsNullOrEmpty(modelPath))
                     {
                         throw new ArgumentException("Model path must be provided for custom models");
                     }
-                    return new KerasQualityModel(modelPath);
+                    return new AccordNetQualityModel(modelPath);
                     
                 default:
                     throw new ArgumentException($"Unknown model type: {type}");

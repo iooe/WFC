@@ -30,8 +30,11 @@
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.2" />
 
-        <!-- Keras.NET package -->
-        <PackageReference Include="Keras.NET" Version="3.8.5" />
+        <!-- Accord.NET Neural Network packages -->
+        <PackageReference Include="Accord.Neuro" Version="3.8.0" />
+        <PackageReference Include="Accord.Math" Version="3.8.0" />
+        <PackageReference Include="Accord.Statistics" Version="3.8.0" />
+        <PackageReference Include="Accord.MachineLearning" Version="3.8.0" />
     </ItemGroup>
 
     <ItemGroup>

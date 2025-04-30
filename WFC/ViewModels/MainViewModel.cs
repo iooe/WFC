@@ -560,7 +560,7 @@ namespace WFC.ViewModels
         {
             get
             {
-                string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "keras_quality_model.h5");
+                string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "accord_quality_model.bin");
                 return File.Exists(modelPath);
             }
         }
@@ -606,29 +606,30 @@ namespace WFC.ViewModels
         {
             try
             {
-                // Check for saved Keras model
-                string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "keras_quality_model.h5");
+                // Check for saved Accord.NET model
+                string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "accord_quality_model.bin");
                 if (File.Exists(modelPath))
                 {
-                    _qualityModel = _modelFactory.CreateModel(ModelType.Custom, modelPath);
-                    Console.WriteLine("Loaded trained Keras quality model");
+                    _qualityModel = new AccordNetQualityModel(modelPath);
+                    Console.WriteLine("Trained neural network loaded");
                 }
                 else
                 {
                     // Use default model
                     _qualityModel = _modelFactory.CreateModel(ModelType.Basic);
-                    Console.WriteLine("Using default quality model (no trained model found)");
+                    Console.WriteLine("Using basic assessment model (neural network not found)");
                 }
 
                 OnPropertyChanged(nameof(HasTrainedModel));
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to initialize quality model: {ex.Message}");
-                // Fall back to basic model
+                Console.WriteLine($"Neural network initialization error: {ex.Message}");
+                // Fallback to basic model
                 _qualityModel = _modelFactory.CreateModel(ModelType.Basic);
             }
         }
+
 
         /// <summary>
         /// Update the list of available tiles from configuration
@@ -1209,28 +1210,28 @@ namespace WFC.ViewModels
                 string trainingDataPath = Path.Combine(modelsDir, "training_data.json");
                 await _trainingDataCollector.ExportTrainingData(trainingDataPath);
 
-                TrainingStatus = "Training Keras model...";
-                Status = "Building and training neural network with Keras.NET...";
+                TrainingStatus = "Training neural network...";
+                Status = "Creating and training Accord.NET neural network...";
 
-                // Train model using Keras.NET
-                var modelOutputPath = Path.Combine(modelsDir, "keras_quality_model.h5");
-                var trainer = new KerasModelTrainer(trainingDataPath, modelOutputPath);
+                // Train model using Accord.NET
+                var modelOutputPath = Path.Combine(modelsDir, "accord_quality_model.bin");
+                var trainer = new AccordNetModelTrainer(trainingDataPath, modelOutputPath);
                 string modelPath = await trainer.TrainModelAsync();
 
-                // Reinitialize quality model with the new Keras model
-                _qualityModel = _modelFactory.CreateModel(ModelType.Custom, modelPath);
+                // Reinitialize quality model with new neural network
+                _qualityModel = new AccordNetQualityModel(modelPath);
 
-                TrainingStatus = "Keras model training completed successfully!";
-                Status = "Neural network training completed";
+                TrainingStatus = "Neural network training successfully completed!";
+                Status = "Neural network successfully trained";
 
                 // Update HasTrainedModel property
                 OnPropertyChanged(nameof(HasTrainedModel));
             }
             catch (Exception ex)
             {
-                TrainingStatus = $"Training failed: {ex.Message}";
-                Status = $"Error training model: {ex.Message}";
-                Console.WriteLine($"Error training model: {ex}");
+                TrainingStatus = $"Training error: {ex.Message}";
+                Status = $"Neural network training error: {ex.Message}";
+                Console.WriteLine($"Neural network training error: {ex}");
             }
             finally
             {
@@ -1246,13 +1247,13 @@ private void DeleteTrainedModel()
 {
     try
     {
-        // Path to Keras model
-        string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "keras_quality_model.h5");
+        // Path to Accord.NET model
+        string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "accord_quality_model.bin");
 
         // Path to training data
         string trainingDataPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TrainingData");
 
-        // Check if any data exists to delete
+        // Check if data exists for deletion
         bool modelExists = File.Exists(modelPath);
         bool trainingDataExists = Directory.Exists(trainingDataPath) &&
                                   (Directory.GetFiles(trainingDataPath).Length > 0 ||
@@ -1260,16 +1261,16 @@ private void DeleteTrainedModel()
 
         if (!modelExists && !trainingDataExists)
         {
-            Status = "No neural network data found to delete.";
+            Status = "Neural network data for deletion not found.";
             return;
         }
 
-        // Ask for confirmation with options
+        // Request confirmation with options
         var messageBoxResult = MessageBox.Show(
-            "What would you like to delete?\n\n" +
-            "• Delete model only: Removes the trained Keras model but keeps your map ratings\n" +
-            "• Delete model and training data: Removes everything and starts fresh",
-            "Neural Network Data Deletion",
+            "What do you want to delete?\n\n" +
+            "• Delete model only: Removes the trained neural network but keeps map ratings\n" +
+            "• Delete model and training data: Removes everything and starts from scratch",
+            "Delete Neural Network Data",
             MessageBoxButton.YesNoCancel,
             MessageBoxImage.Warning,
             MessageBoxResult.Cancel,
@@ -1277,21 +1278,21 @@ private void DeleteTrainedModel()
 
         if (messageBoxResult == MessageBoxResult.Cancel)
         {
-            Status = "Deletion cancelled.";
+            Status = "Deletion canceled.";
             return;
         }
 
         bool deleteTrainingData =
-            messageBoxResult == MessageBoxResult.No; // "No" is the "Delete model and training data" option
+            messageBoxResult == MessageBoxResult.No; // "No" - option "Delete model and training data"
 
-        // Delete Keras model file
+        // Delete model file
         if (modelExists)
         {
             File.Delete(modelPath);
-            Console.WriteLine("Trained Keras model deleted by user request");
+            Console.WriteLine("Trained neural network deleted by user request");
         }
 
-        // Delete training data if requested
+        // Delete training data if needed
         if (deleteTrainingData && trainingDataExists)
         {
             // Delete examples.json
@@ -1321,8 +1322,8 @@ private void DeleteTrainedModel()
         }
 
         Status = deleteTrainingData
-            ? "Keras neural network model and training data deleted."
-            : "Keras neural network model deleted. Training data preserved.";
+            ? "Neural network and training data deleted."
+            : "Neural network deleted. Training data preserved.";
 
         // Update HasTrainedModel property
         OnPropertyChanged(nameof(HasTrainedModel));
@@ -1333,7 +1334,6 @@ private void DeleteTrainedModel()
         Console.WriteLine($"Error deleting neural network data: {ex}");
     }
 }
-
         #endregion
     }
 }

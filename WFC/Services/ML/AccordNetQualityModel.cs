@@ -1,154 +1,207 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-using Keras;
-using Keras.Models;
-using Numpy;
+﻿using System.IO;
+using Accord.Neuro;
 using WFC.Models;
 using WFC.Models.NeuralNetwork;
 
 namespace WFC.Services.ML
 {
     /// <summary>
-    /// Quality assessment model based on Keras.NET
+    /// Model for quality assessment using real neural networks with Accord.NET
     /// </summary>
-    public class KerasQualityModel : IQualityAssessmentModel
+    public class AccordNetQualityModel : IQualityAssessmentModel
     {
         private readonly string _modelPath;
-        private BaseModel _model;
+        private ActivationNetwork _network;
         private bool _modelLoaded = false;
 
-        public KerasQualityModel(string modelPath = null)
+        /// <summary>
+        /// Initialization of quality assessment model based on neural network
+        /// </summary>
+        /// <param name="modelPath">Path to saved model (optional)</param>
+        public AccordNetQualityModel(string modelPath = null)
         {
-            _modelPath = modelPath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "keras_quality_model.h5");
+            _modelPath = modelPath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "accord_quality_model.bin");
             
-            // Try to load pre-trained model if it exists
             try
             {
                 LoadModel();
-                Console.WriteLine($"Loaded Keras quality model from {_modelPath}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error loading Keras model: {ex.Message}");
-                _modelLoaded = false;
-            }
-        }
-
-        private void LoadModel()
-        {
-            // Check if model exists
-            if (!File.Exists(_modelPath))
-            {
-                Console.WriteLine("No Keras model found at path: " + _modelPath);
-                _modelLoaded = false;
-                return;
-            }
-
-            try
-            {
-                // Load Keras model
-                _model = Model.LoadModel(_modelPath);
+                Console.WriteLine($"Neural network loaded from {_modelPath}");
                 _modelLoaded = true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error loading Keras model: {ex.Message}");
+                Console.WriteLine($"Error loading neural network: {ex.Message}");
+                
+                // Creating a new network with architecture:
+                // Inputs: 8 (map features)
+                // Hidden layer 1: 16 neurons
+                // Hidden layer 2: 8 neurons
+                // Output: 1 (quality assessment)
+                _network = new ActivationNetwork(
+                    new BipolarSigmoidFunction(2.0), // Bipolar sigmoid activation function
+                    8,   // Inputs - number of features
+                    16,  // Hidden layer 1 
+                    8,   // Hidden layer 2
+                    1);  // Output - quality assessment
+                
                 _modelLoaded = false;
-                throw; // Rethrow to handle in constructor
             }
         }
 
+        /// <summary>
+        /// Perform quality assessment of the map
+        /// </summary>
         public async Task<QualityAssessment> EvaluateAsync(Tile[,] tileMap)
         {
             try
             {
-                // Handle null tileMap
+                // Null check
                 if (tileMap == null)
                 {
                     Console.WriteLine("Error: tileMap is null in EvaluateAsync");
-                    return CreateDefaultAssessment("Unable to assess quality: grid data unavailable");
+                    return CreateDefaultAssessment("Cannot assess quality: grid data unavailable");
                 }
 
-                Console.WriteLine($"Assessing quality for grid: {tileMap.GetLength(0)}x{tileMap.GetLength(1)}");
+                Console.WriteLine($"Quality assessment for grid: {tileMap.GetLength(0)}x{tileMap.GetLength(1)}");
 
-                // Extract features from tilemap
+                // Extract features from tile map
                 var features = ExtractFeatures(tileMap);
                 LogFeatures(features);
 
                 QualityAssessment result;
 
-                if (_modelLoaded && _model != null)
+                if (_modelLoaded && _network != null)
                 {
-                    Console.WriteLine("Using trained Keras quality model for assessment");
+                    Console.WriteLine("Using trained neural network for assessment");
                     try
                     {
-                        // Make prediction with Keras model
+                        // Perform prediction with neural network
                         float prediction = RunInference(features);
 
-                        // Log prediction result
-                        Console.WriteLine($"MODEL PREDICTION: OverallQuality = {prediction}");
+                        // Output prediction result
+                        Console.WriteLine($"NEURAL NETWORK PREDICTION: OverallQuality = {prediction}");
 
-                        // Protect against zero values
+                        // Protection against zero values
                         if (Math.Abs(prediction) < 0.001f)
                         {
-                            Console.WriteLine("WARNING: Model predicted zero score, using heuristic assessment instead");
+                            Console.WriteLine("WARNING: Model predicted zero assessment, using heuristic assessment");
                             result = CreateHeuristicAssessment(features);
                         }
                         else
                         {
-                            // Create assessment result using model prediction
+                            // Create assessment result based on model prediction
                             result = CreateAssessment(prediction, features);
                         }
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error during Keras prediction: {ex.Message}");
-                        Console.WriteLine("Falling back to heuristic method");
-                        // Fall back to heuristic method
+                        Console.WriteLine($"Error during neural network prediction: {ex.Message}");
+                        Console.WriteLine("Switching to heuristic method");
+                        // Use heuristic method when error occurs
                         result = CreateHeuristicAssessment(features);
                     }
                 }
                 else
                 {
                     Console.WriteLine("No trained model available, using heuristic assessment");
-                    // Use heuristic-based assessment if no model is available
+                    // Use heuristic method if no model is available
                     result = CreateHeuristicAssessment(features);
                 }
 
-                // Final quality check - protect against zero values
+                // Value check - protection against zero assessments
                 if (Math.Abs(result.OverallScore) < 0.001f)
                 {
-                    Console.WriteLine("WARNING: Final quality score is zero! Applying safety minimum.");
-                    result.OverallScore = 0.3f; // Safety minimum value
+                    Console.WriteLine("WARNING: Final quality assessment is zero! Applying minimum value.");
+                    result.OverallScore = 0.3f; // Minimum value
 
                     // Also check dimensional scores
                     foreach (var key in result.DimensionalScores.Keys.ToList())
                     {
                         if (Math.Abs(result.DimensionalScores[key]) < 0.001f)
                         {
-                            result.DimensionalScores[key] = 0.2f; // Minimum per dimension
+                            result.DimensionalScores[key] = 0.2f; // Minimum for each dimension
                         }
                     }
                 }
 
-                // Log final results
+                // Output final results
                 LogFinalResults(result);
 
                 return result;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error evaluating quality: {ex}");
-                return CreateDefaultAssessment($"Error evaluating quality: {ex.Message}");
+                Console.WriteLine($"Quality assessment error: {ex}");
+                return CreateDefaultAssessment($"Quality assessment error: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Load model from file
+        /// </summary>
+        private void LoadModel()
+        {
+            if (File.Exists(_modelPath))
+            {
+                // Load saved neural network
+                _network = (ActivationNetwork)Network.Load(_modelPath);
+            }
+            else
+            {
+                throw new FileNotFoundException($"Model file not found: {_modelPath}");
+            }
+        }
+
+        /// <summary>
+        /// Perform prediction using neural network
+        /// </summary>
+        private float RunInference(Dictionary<string, float> features)
+        {
+            try
+            {
+                // Convert features to network input data
+                double[] input = new double[]
+                {
+                    features["VarietyScore"],
+                    features["TransitionDensity"],
+                    features["RatioGrass"],
+                    features["RatioFlowers"],
+                    features["RatioPavement"],
+                    features["RatioBuilding"],
+                    features["RatioWater"],
+                    NormalizeTransitionCount(features["TransitionCount"])
+                };
+
+                // Perform prediction using neural network
+                double[] output = _network.Compute(input);
+                
+                // Get prediction (first and only output)
+                float prediction = (float)output[0];
+                
+                // Normalize value to 0-1 range
+                // (Accord may output values outside 0-1 range)
+                return Math.Max(0, Math.Min(1, prediction));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in inference: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Normalize transition count to 0-1 range
+        /// </summary>
+        private float NormalizeTransitionCount(float transitionCount)
+        {
+            // Assume maximum transition count is 100
+            float maxTransitions = 100f;
+            return Math.Min(transitionCount / maxTransitions, 1.0f);
         }
 
         private void LogFeatures(Dictionary<string, float> features)
         {
-            Console.WriteLine($"Features extracted successfully:");
+            Console.WriteLine($"Extracted features:");
             Console.WriteLine($"  VarietyScore: {features["VarietyScore"]}");
             Console.WriteLine($"  TransitionCount: {features["TransitionCount"]}");
             Console.WriteLine($"  TransitionDensity: {features["TransitionDensity"]}");
@@ -166,52 +219,16 @@ namespace WFC.Services.ML
             }
         }
 
-        private float RunInference(Dictionary<string, float> features)
-        {
-            // Create input array in the format expected by the model
-            float[] inputArray = new float[]
-            {
-                features["VarietyScore"],
-                features["TransitionCount"],
-                features["TransitionDensity"],
-                features["RatioGrass"],
-                features["RatioFlowers"],
-                features["RatioPavement"],
-                features["RatioBuilding"],
-                features["RatioWater"]
-            };
-
-            try
-            {
-                // Create a batch of size 1 with our input features
-                var inputData = np.array(new float[][] { inputArray });
-                
-                // Run prediction
-                var predictions = _model.Predict(inputData);
-                
-                // Extract and return the prediction value
-                float prediction = (float)predictions[0, 0];
-                
-                // Ensure prediction is within 0-1 range
-                return Math.Max(0, Math.Min(1, prediction));
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in inference: {ex.Message}");
-                throw;
-            }
-        }
-
         private Dictionary<string, float> ExtractFeatures(Tile[,] tileMap)
         {
-            // Handle null tileMap
+            // Handle empty map
             if (tileMap == null)
             {
                 Console.WriteLine("Error: tileMap is null in ExtractFeatures");
                 return new Dictionary<string, float>
                 {
                     { "VarietyScore", 0.5f },
-                    { "TransitionCount", 0 },
+                    { "TransitionCount", 0f },
                     { "TransitionDensity", 0.5f },
                     { "RatioGrass", 0.2f },
                     { "RatioFlowers", 0.1f },
@@ -221,7 +238,7 @@ namespace WFC.Services.ML
                 };
             }
 
-            // Extract relevant features from the tile map
+            // Extract features from tile map
             int width = tileMap.GetLength(0);
             int height = tileMap.GetLength(1);
             int totalTiles = width * height;
@@ -255,7 +272,7 @@ namespace WFC.Services.ML
 
             Console.WriteLine($"Grid contains {nonNullTiles} non-null tiles");
 
-            // Calculate variety score (unique tiles / total)
+            // Calculate diversity (unique tiles / total count)
             var uniqueTileIds = new HashSet<string>();
             foreach (var tile in tileMap)
             {
@@ -275,11 +292,11 @@ namespace WFC.Services.ML
                 { "VarietyScore", varietyScore },
                 { "TransitionCount", transitions },
                 { "TransitionDensity", transitionDensity },
-                { "RatioGrass", totalTiles > 0 ? (float)categories["grass"] / totalTiles : 0 },
-                { "RatioFlowers", totalTiles > 0 ? (float)categories["flowers"] / totalTiles : 0 },
-                { "RatioPavement", totalTiles > 0 ? (float)categories["pavement"] / totalTiles : 0 },
-                { "RatioBuilding", totalTiles > 0 ? (float)categories["building"] / totalTiles : 0 },
-                { "RatioWater", totalTiles > 0 ? (float)categories["water"] / totalTiles : 0 }
+                { "RatioGrass", totalTiles > 0 ? (float)categories["grass"] / totalTiles : 0f },
+                { "RatioFlowers", totalTiles > 0 ? (float)categories["flowers"] / totalTiles : 0f },
+                { "RatioPavement", totalTiles > 0 ? (float)categories["pavement"] / totalTiles : 0f },
+                { "RatioBuilding", totalTiles > 0 ? (float)categories["building"] / totalTiles : 0f },
+                { "RatioWater", totalTiles > 0 ? (float)categories["water"] / totalTiles : 0f }
             };
         }
 
@@ -305,7 +322,7 @@ namespace WFC.Services.ML
                             transitions++;
                     }
 
-                    // Check down
+                    // Check below
                     if (y < height - 1)
                     {
                         var down = tileMap[x, y + 1]?.Category?.ToLowerInvariant();
@@ -353,54 +370,41 @@ namespace WFC.Services.ML
 
         private QualityAssessment CreateHeuristicAssessment(Dictionary<string, float> features)
         {
-            // Calculate scores based on heuristics
-            float coherenceScore = CalculateCoherenceScore(features);
-            float aestheticsScore = CalculateAestheticsScore(features);
-            float playabilityScore = CalculatePlayabilityScore(features);
 
-            // Overall score is weighted average of dimensional scores
-            float overallScore = (coherenceScore * 0.3f) + (aestheticsScore * 0.4f) + (playabilityScore * 0.3f);
 
             var dimensionalScores = new Dictionary<string, float>
             {
-                { "Coherence", coherenceScore },
-                { "Aesthetics", aestheticsScore },
-                { "Playability", playabilityScore }
+                { "Coherence", -1 },
+                { "Aesthetics", -1 },
+                { "Playability", -1 }
             };
 
             return new QualityAssessment
             {
-                OverallScore = overallScore,
+                OverallScore = -1,
                 DimensionalScores = dimensionalScores,
-                Feedback = GenerateFeedback(overallScore, dimensionalScores, features)
+                Feedback = GenerateFeedback(-1, dimensionalScores, features)
             };
         }
 
         private float CalculateCoherenceScore(Dictionary<string, float> features)
         {
-            // Diagnostic output
-            Console.WriteLine($"TransitionDensity: {features["TransitionDensity"]}, VarietyScore: {features["VarietyScore"]}");
-
             // Softer calculation with less penalty
             float idealTransitionDensity = 0.4f;
             float transitionScore = Math.Max(0, 1.0f - Math.Abs(features["TransitionDensity"] - idealTransitionDensity));
 
-            // Soften variety penalty
+            // Soften penalty for diversity
             float varietyScore = Math.Max(0, 1.0f - Math.Abs(features["VarietyScore"] - 0.5f));
-
-            // Diagnostic output
-            Console.WriteLine($"TransitionScore: {transitionScore}, VarietyScore: {varietyScore}");
 
             // Calculate final score
             float coherenceScore = (transitionScore * 0.7f) + (varietyScore * 0.3f);
-            Console.WriteLine($"Final CoherenceScore: {coherenceScore}");
 
             return Math.Clamp(coherenceScore, 0, 1);
         }
 
         private float CalculateAestheticsScore(Dictionary<string, float> features)
         {
-            // Balance between natural (grass, flowers) and constructed (pavement, building) elements
+            // Balance between natural (grass, flowers) and artificial (pavement, buildings) elements
             float naturalRatio = features["RatioGrass"] + features["RatioFlowers"] + features["RatioWater"];
             float constructedRatio = features["RatioPavement"] + features["RatioBuilding"];
 
@@ -414,18 +418,18 @@ namespace WFC.Services.ML
 
         private float CalculatePlayabilityScore(Dictionary<string, float> features)
         {
-            // Playability is based on having good balance of open areas and obstacles
+            // Gameplay qualities based on good balance of open spaces and obstacles
             float openAreaRatio = features["RatioGrass"] + features["RatioPavement"] + features["RatioFlowers"];
             float obstacleRatio = features["RatioBuilding"] + features["RatioWater"];
 
-            // Ideal ratio around 70% open, 30% obstacles
+            // Ideal ratio about 70% open space, 30% obstacles
             float idealOpen = 0.7f;
             float distanceFromIdeal = Math.Abs(openAreaRatio - idealOpen);
 
-            // Convert to score (1.0 = perfect, 0.0 = worst)
+            // Convert to score (1.0 = ideal, 0.0 = worst)
             float ratioScore = 1.0f - (distanceFromIdeal / idealOpen);
 
-            // Also factor in transition density (for navigability)
+            // Also consider transition density (for navigation ease)
             float transitionScore = features["TransitionDensity"] * 0.5f;
 
             return Math.Clamp((ratioScore * 0.8f) + (transitionScore * 0.2f), 0, 1);
@@ -436,23 +440,23 @@ namespace WFC.Services.ML
         {
             var feedback = new List<string>();
 
-            // Overall quality feedback
+            // Overall quality assessment
             if (overallScore > 0.8f)
-                feedback.Add("Excellent map design with great balance and structure.");
+                feedback.Add("Excellent map design with good balance and structure.");
             else if (overallScore > 0.6f)
-                feedback.Add("Good map design with minor room for improvement.");
+                feedback.Add("Good map design with minor opportunities for improvement.");
             else if (overallScore > 0.4f)
-                feedback.Add("Average map quality with several areas for improvement.");
+                feedback.Add("Average quality level with several areas for improvement.");
             else
-                feedback.Add("This map needs significant improvements to enhance quality.");
+                feedback.Add("This map requires significant improvements to increase quality.");
 
             // Coherence feedback
             if (dimensionalScores["Coherence"] < 0.5f)
             {
                 if (features["TransitionDensity"] > 0.6f)
-                    feedback.Add("Too many transitions between tile types creates a chaotic appearance.");
+                    feedback.Add("Too many transitions between tile types creates a chaotic impression.");
                 else if (features["TransitionDensity"] < 0.2f)
-                    feedback.Add("More variety in tile transitions would improve the map's coherence.");
+                    feedback.Add("More variety in tile transitions would improve map coherence.");
             }
 
             // Aesthetics feedback
@@ -463,24 +467,24 @@ namespace WFC.Services.ML
 
                 if (naturalRatio > 0.8f)
                     feedback.Add(
-                        "The map is too dominated by natural elements. Adding more constructed features would improve balance.");
+                        "Map is too saturated with natural elements. Adding constructed objects would improve balance.");
                 else if (constructedRatio > 0.8f)
                     feedback.Add(
-                        "The map is too dominated by constructed elements. Adding more natural features would improve balance.");
+                        "Map is too saturated with artificial elements. Adding natural objects would improve balance.");
 
                 if (features["VarietyScore"] < 0.2f)
-                    feedback.Add("Low variety of tiles makes the map look repetitive.");
+                    feedback.Add("Low tile variety makes the map repetitive.");
             }
 
-            // Playability feedback
+            // Gameplay feedback
             if (dimensionalScores["Playability"] < 0.5f)
             {
                 float openAreaRatio = features["RatioGrass"] + features["RatioPavement"] + features["RatioFlowers"];
 
                 if (openAreaRatio < 0.4f)
-                    feedback.Add("The map has too many obstacles, making navigation difficult.");
+                    feedback.Add("Map has too many obstacles, making navigation difficult.");
                 else if (openAreaRatio > 0.9f)
-                    feedback.Add("The map has too few obstacles, making it less interesting to navigate.");
+                    feedback.Add("Map has too few obstacles, making movement less interesting.");
             }
 
             return feedback.ToArray();
@@ -490,13 +494,15 @@ namespace WFC.Services.ML
         {
             return new ModelInfo
             {
-                Name = "Keras.NET Quality Assessment Model",
-                Description = "Neural network model for evaluating procedurally generated maps",
+                Name = "Accord.NET Neural Network Quality Model",
+                Description = "Neural network for evaluating procedurally generated maps",
                 Version = "1.0",
                 Parameters = new Dictionary<string, string>
                 {
-                    { "Architecture", "Keras.NET Neural Network" },
-                    { "Features", "Variety, Transitions, Tile Distribution" },
+                    { "Architecture", "Multi-layer neural network" },
+                    { "Activation", "Bipolar sigmoid" },
+                    { "Layers", "8-16-8-1" },
+                    { "Features", "Variety, Transitions, Tile distribution" },
                     { "Trained", _modelLoaded ? "Yes" : "No" }
                 }
             };
