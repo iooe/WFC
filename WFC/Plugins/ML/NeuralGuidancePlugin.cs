@@ -33,7 +33,7 @@ namespace WFC.Plugins.ML
             else
             {
                 // Create default model
-                _model = new AdvancedQualityModel();
+                _model = new KerasQualityModel();
                 Console.WriteLine("Neural guidance using default quality model");
             }
         }

@@ -1,6 +1,4 @@
 ﻿using System;
-using System.IO;
-using Microsoft.ML;
 using WFC.Models.NeuralNetwork;
 using WFC.Services.ML;
 
@@ -16,14 +14,14 @@ namespace WFC.Factories.Model
                     return new BasicQualityModel();
                     
                 case ModelType.Advanced:
-                    return new AdvancedQualityModel();
+                    return new KerasQualityModel();
                     
                 case ModelType.Custom:
                     if (string.IsNullOrEmpty(modelPath))
                     {
                         throw new ArgumentException("Model path must be provided for custom models");
                     }
-                    return new AdvancedQualityModel(modelPath);
+                    return new KerasQualityModel(modelPath);
                     
                 default:
                     throw new ArgumentException($"Unknown model type: {type}");

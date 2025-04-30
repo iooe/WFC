@@ -560,7 +560,7 @@ namespace WFC.ViewModels
         {
             get
             {
-                string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "quality_model.zip");
+                string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "keras_quality_model.h5");
                 return File.Exists(modelPath);
             }
         }
@@ -606,18 +606,18 @@ namespace WFC.ViewModels
         {
             try
             {
-                // Check for saved model
-                string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "quality_model.zip");
+                // Check for saved Keras model
+                string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "keras_quality_model.h5");
                 if (File.Exists(modelPath))
                 {
                     _qualityModel = _modelFactory.CreateModel(ModelType.Custom, modelPath);
-                    Console.WriteLine("Loaded trained quality model");
+                    Console.WriteLine("Loaded trained Keras quality model");
                 }
                 else
                 {
                     // Use default model
                     _qualityModel = _modelFactory.CreateModel(ModelType.Basic);
-                    Console.WriteLine("Using default quality model");
+                    Console.WriteLine("Using default quality model (no trained model found)");
                 }
 
                 OnPropertyChanged(nameof(HasTrainedModel));
@@ -1209,21 +1209,18 @@ namespace WFC.ViewModels
                 string trainingDataPath = Path.Combine(modelsDir, "training_data.json");
                 await _trainingDataCollector.ExportTrainingData(trainingDataPath);
 
-                TrainingStatus = "Training model...";
-                Status = "Training quality assessment model...";
+                TrainingStatus = "Training Keras model...";
+                Status = "Building and training neural network with Keras.NET...";
 
-                // Train model
-                var trainer = new ModelTrainer(trainingDataPath);
-                var model = await trainer.TrainModel();
+                // Train model using Keras.NET
+                var modelOutputPath = Path.Combine(modelsDir, "keras_quality_model.h5");
+                var trainer = new KerasModelTrainer(trainingDataPath, modelOutputPath);
+                string modelPath = await trainer.TrainModelAsync();
 
-                // Save model
-                string modelPath = Path.Combine(modelsDir, "quality_model.zip");
-                trainer.SaveModel(model, modelPath);
-
-                // Reinitialize quality model
+                // Reinitialize quality model with the new Keras model
                 _qualityModel = _modelFactory.CreateModel(ModelType.Custom, modelPath);
 
-                TrainingStatus = "Model training completed successfully!";
+                TrainingStatus = "Keras model training completed successfully!";
                 Status = "Neural network training completed";
 
                 // Update HasTrainedModel property
@@ -1241,101 +1238,101 @@ namespace WFC.ViewModels
             }
         }
 
+
         /// <summary>
         /// Delete the trained model
         /// </summary>
-        private void DeleteTrainedModel()
+private void DeleteTrainedModel()
+{
+    try
+    {
+        // Path to Keras model
+        string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "keras_quality_model.h5");
+
+        // Path to training data
+        string trainingDataPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TrainingData");
+
+        // Check if any data exists to delete
+        bool modelExists = File.Exists(modelPath);
+        bool trainingDataExists = Directory.Exists(trainingDataPath) &&
+                                  (Directory.GetFiles(trainingDataPath).Length > 0 ||
+                                   Directory.GetDirectories(trainingDataPath).Length > 0);
+
+        if (!modelExists && !trainingDataExists)
         {
-            try
-            {
-                // Path to model
-                string modelPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Models", "quality_model.zip");
-
-                // Path to training data
-                string trainingDataPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TrainingData");
-
-                // Check if any data exists to delete
-                bool modelExists = File.Exists(modelPath);
-                bool trainingDataExists = Directory.Exists(trainingDataPath) &&
-                                          (Directory.GetFiles(trainingDataPath).Length > 0 ||
-                                           Directory.GetDirectories(trainingDataPath).Length > 0);
-
-                if (!modelExists && !trainingDataExists)
-                {
-                    Status = "No neural network data found to delete.";
-                    return;
-                }
-
-                // Ask for confirmation with options
-                var options = new List<string> { "Delete model only", "Delete model and training data", "Cancel" };
-                var messageBoxResult = MessageBox.Show(
-                    "What would you like to delete?\n\n" +
-                    "• Delete model only: Removes the trained model but keeps your map ratings\n" +
-                    "• Delete model and training data: Removes everything and starts fresh",
-                    "Neural Network Data Deletion",
-                    MessageBoxButton.YesNoCancel,
-                    MessageBoxImage.Warning,
-                    MessageBoxResult.Cancel,
-                    MessageBoxOptions.None);
-
-                if (messageBoxResult == MessageBoxResult.Cancel)
-                {
-                    Status = "Deletion cancelled.";
-                    return;
-                }
-
-                bool deleteTrainingData =
-                    messageBoxResult == MessageBoxResult.No; // "No" is the "Delete model and training data" option
-
-                // Delete model file
-                if (modelExists)
-                {
-                    File.Delete(modelPath);
-                    Console.WriteLine("Trained model deleted by user request");
-                }
-
-                // Delete training data if requested
-                if (deleteTrainingData && trainingDataExists)
-                {
-                    // Delete examples.json
-                    string examplesFile = Path.Combine(trainingDataPath, "examples.json");
-                    if (File.Exists(examplesFile))
-                    {
-                        File.Delete(examplesFile);
-                    }
-
-                    // Delete map folders
-                    foreach (var dir in Directory.GetDirectories(trainingDataPath))
-                    {
-                        Directory.Delete(dir, true);
-                    }
-
-                    Console.WriteLine("Training data deleted by user request");
-                }
-
-                // Reset model instance
-                if (_qualityModel != null)
-                {
-                    // Switch to basic model
-                    _qualityModel = _modelFactory.CreateModel(ModelType.Basic);
-
-                    // Reset quality assessment
-                    QualityAssessment = null;
-                }
-
-                Status = deleteTrainingData
-                    ? "Neural network model and training data deleted."
-                    : "Neural network model deleted. Training data preserved.";
-
-                // Update HasTrainedModel property
-                OnPropertyChanged(nameof(HasTrainedModel));
-            }
-            catch (Exception ex)
-            {
-                Status = $"Error deleting neural network data: {ex.Message}";
-                Console.WriteLine($"Error deleting neural network data: {ex}");
-            }
+            Status = "No neural network data found to delete.";
+            return;
         }
+
+        // Ask for confirmation with options
+        var messageBoxResult = MessageBox.Show(
+            "What would you like to delete?\n\n" +
+            "• Delete model only: Removes the trained Keras model but keeps your map ratings\n" +
+            "• Delete model and training data: Removes everything and starts fresh",
+            "Neural Network Data Deletion",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Warning,
+            MessageBoxResult.Cancel,
+            MessageBoxOptions.None);
+
+        if (messageBoxResult == MessageBoxResult.Cancel)
+        {
+            Status = "Deletion cancelled.";
+            return;
+        }
+
+        bool deleteTrainingData =
+            messageBoxResult == MessageBoxResult.No; // "No" is the "Delete model and training data" option
+
+        // Delete Keras model file
+        if (modelExists)
+        {
+            File.Delete(modelPath);
+            Console.WriteLine("Trained Keras model deleted by user request");
+        }
+
+        // Delete training data if requested
+        if (deleteTrainingData && trainingDataExists)
+        {
+            // Delete examples.json
+            string examplesFile = Path.Combine(trainingDataPath, "examples.json");
+            if (File.Exists(examplesFile))
+            {
+                File.Delete(examplesFile);
+            }
+
+            // Delete map folders
+            foreach (var dir in Directory.GetDirectories(trainingDataPath))
+            {
+                Directory.Delete(dir, true);
+            }
+
+            Console.WriteLine("Training data deleted by user request");
+        }
+
+        // Reset model instance
+        if (_qualityModel != null)
+        {
+            // Switch to basic model
+            _qualityModel = _modelFactory.CreateModel(ModelType.Basic);
+
+            // Reset quality assessment
+            QualityAssessment = null;
+        }
+
+        Status = deleteTrainingData
+            ? "Keras neural network model and training data deleted."
+            : "Keras neural network model deleted. Training data preserved.";
+
+        // Update HasTrainedModel property
+        OnPropertyChanged(nameof(HasTrainedModel));
+    }
+    catch (Exception ex)
+    {
+        Status = $"Error deleting neural network data: {ex.Message}";
+        Console.WriteLine($"Error deleting neural network data: {ex}");
+    }
+}
 
         #endregion
     }
