@@ -1,0 +1,9 @@
+﻿{
+  "profiles": {
+    "WFC": {
+      "commandName": "Project",
+      "commandLineArgs": "",
+      "environmentVariables": {}
+    }
+  }
+}

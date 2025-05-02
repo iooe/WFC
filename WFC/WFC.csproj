@@ -9,6 +9,11 @@
         <UseWindowsForms>true</UseWindowsForms>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <StartupObject>WFC.App</StartupObject>
+        <GenerateProgramFile>false</GenerateProgramFile>
+    </PropertyGroup>
+    
     <ItemGroup>
         <Folder Include="Resources\buildings\wall-front-bottom-end\" />
         <Folder Include="Resources\buildings\wall-front-top-end\" />
@@ -35,6 +40,12 @@
         <PackageReference Include="Accord.Math" Version="3.8.0" />
         <PackageReference Include="Accord.Statistics" Version="3.8.0" />
         <PackageReference Include="Accord.MachineLearning" Version="3.8.0" />
+
+        <!-- Test packages -->
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+        <PackageReference Include="MSTest.TestAdapter" Version="3.1.1" />
+        <PackageReference Include="MSTest.TestFramework" Version="3.1.1" />
+        <PackageReference Include="Moq" Version="4.20.70" />
     </ItemGroup>
 
     <ItemGroup>
