@@ -109,11 +109,12 @@ public class Cell
     {
         int count = PossibleStates.Count;
         
+        // Skip recalculation if count hasn't changed
+        if (_lastCount == count)
+            return;
+        
         _lastCount = count;
         
-        if (_lastCount == count)
-            return; // Skip recalculation if count hasn ’ t changed
-
         if (count <= 1)
         {
             Entropy = 0; // Fully determined state has zero entropy

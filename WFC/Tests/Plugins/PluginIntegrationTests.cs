@@ -4,6 +4,7 @@ using Moq;
 using WFC.Models;
 using WFC.Plugins;
 using WFC.Services;
+using WFC.Services.Export;
 
 namespace WFC.Tests.Plugins;
 
@@ -35,33 +36,42 @@ public class PluginIntegrationTests
     {
         // Arrange
         var mockPlugin = new MockTileSetPlugin();
-        _pluginManager.LoadPlugins(); // Simulates loading plugins
+        mockPlugin.Enabled = true; // Make sure plugin is enabled
         
-        // Inject our mock plugin for testing
+        // Clear any existing plugins from manager
         var pluginsField = typeof(PluginManager).GetField("_plugins", BindingFlags.NonPublic | BindingFlags.Instance);
-        var plugins = (List<IPlugin>)pluginsField.GetValue(_pluginManager);
+        var plugins = new List<IPlugin>();
+        pluginsField.SetValue(_pluginManager, plugins);
+        
+        // Add our mock plugin
         plugins.Add(mockPlugin);
         
-        // Act
+        // Initialize tile configuration
         _tileConfigManager.Initialize();
+        
+        // Act
         var tileDefinitions = _tileConfigManager.GetTileDefinitions();
         
         // Assert
-        Assert.IsTrue(tileDefinitions.ContainsKey("test.tile1"));
-        Assert.IsTrue(tileDefinitions.ContainsKey("test.tile2"));
-        Assert.AreEqual(2, tileDefinitions.Count);
+        Assert.IsNotNull(tileDefinitions, "Tile definitions should not be null");
+        Assert.IsTrue(tileDefinitions.ContainsKey("test.tile1"), "Should contain test.tile1");
+        Assert.IsTrue(tileDefinitions.ContainsKey("test.tile2"), "Should contain test.tile2");
+        Assert.AreEqual(2, tileDefinitions.Count, "Should have exactly 2 tile definitions");
     }
     
     [TestMethod]
     public void WhenPluginIsDisabled_ItsDefinitionsAreNotIncluded()
     {
         // Arrange
-        var mockPlugin = new MockTileSetPlugin { Enabled = false };
-        _pluginManager.LoadPlugins();
+        var mockPlugin = new MockTileSetPlugin();
+        mockPlugin.Enabled = false; // Explicitly disable the plugin
         
-        // Inject our mock plugin
+        // Clear any existing plugins from manager
         var pluginsField = typeof(PluginManager).GetField("_plugins", BindingFlags.NonPublic | BindingFlags.Instance);
-        var plugins = (List<IPlugin>)pluginsField.GetValue(_pluginManager);
+        var plugins = new List<IPlugin>();
+        pluginsField.SetValue(_pluginManager, plugins);
+        
+        // Add our mock plugin
         plugins.Add(mockPlugin);
         
         // Act
@@ -69,7 +79,8 @@ public class PluginIntegrationTests
         var tileDefinitions = _tileConfigManager.GetTileDefinitions();
         
         // Assert
-        Assert.AreEqual(0, tileDefinitions.Count);
+        Assert.IsNotNull(tileDefinitions, "Tile definitions should not be null");
+        Assert.AreEqual(0, tileDefinitions.Count, "Should have 0 tile definitions since plugin is disabled");
     }
     
     [TestMethod]
@@ -77,24 +88,32 @@ public class PluginIntegrationTests
     {
         // Arrange
         var mockPlugin = new MockTileSetPlugin();
-        _pluginManager.LoadPlugins();
+        mockPlugin.Enabled = true; // Make sure plugin is enabled
         
-        // Inject our mock plugin
+        // Clear any existing plugins from manager
         var pluginsField = typeof(PluginManager).GetField("_plugins", BindingFlags.NonPublic | BindingFlags.Instance);
-        var plugins = (List<IPlugin>)pluginsField.GetValue(_pluginManager);
+        var plugins = new List<IPlugin>();
+        pluginsField.SetValue(_pluginManager, plugins);
+        
+        // Add our mock plugin
         plugins.Add(mockPlugin);
         
+        // Initialize tile configuration
         _tileConfigManager.Initialize();
         
         // Act
         var settings = _tileConfigManager.CreateSettings(10, 10);
         
         // Assert
-        Assert.AreEqual(10, settings.Width);
-        Assert.AreEqual(10, settings.Height);
-        Assert.AreEqual(2, settings.Tiles.Count); // From our mock plugin
-        Assert.AreEqual(2, settings.TileIndexMap.Count);
-        Assert.IsTrue(settings.Rules.Count > 0);
+        Assert.IsNotNull(settings, "Settings should not be null");
+        Assert.AreEqual(10, settings.Width, "Width should be 10");
+        Assert.AreEqual(10, settings.Height, "Height should be 10");
+        Assert.IsNotNull(settings.Tiles, "Tiles should not be null");
+        Assert.AreEqual(2, settings.Tiles.Count, "Should have 2 tiles from mock plugin");
+        Assert.IsNotNull(settings.TileIndexMap, "TileIndexMap should not be null");
+        Assert.AreEqual(2, settings.TileIndexMap.Count, "Should have 2 entries in TileIndexMap");
+        Assert.IsNotNull(settings.Rules, "Rules should not be null");
+        Assert.IsTrue(settings.Rules.Count > 0, "Should have at least one rule");
     }
     
     // Mock implementation for testing

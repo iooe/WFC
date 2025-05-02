@@ -207,11 +207,14 @@ public class PluginManager
                 string json = File.ReadAllText(prefsPath);
                 var prefs = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, bool>>(json);
                 
-                foreach (var plugin in _plugins)
+                if (prefs != null)
                 {
-                    if (prefs.TryGetValue(plugin.Id, out bool enabled))
+                    foreach (var plugin in _plugins)
                     {
-                        plugin.Enabled = enabled;
+                        if (prefs.TryGetValue(plugin.Id, out bool enabled))
+                        {
+                            plugin.Enabled = enabled;
+                        }
                     }
                 }
                 
@@ -285,10 +288,16 @@ public class PluginManager
             try
             {
                 var definitions = tileSetPlugin.GetTileDefinitions();
-                foreach (var definition in definitions)
+                if (definitions != null)
                 {
-                    // Add or replace existing definition
-                    _tileDefinitions[definition.Id] = definition;
+                    foreach (var definition in definitions)
+                    {
+                        if (definition != null && !string.IsNullOrEmpty(definition.Id))
+                        {
+                            // Add or replace existing definition
+                            _tileDefinitions[definition.Id] = definition;
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -308,7 +317,16 @@ public class PluginManager
             try
             {
                 var definitions = tileSetPlugin.GetRuleDefinitions();
-                _ruleDefinitions.AddRange(definitions);
+                if (definitions != null)
+                {
+                    foreach (var rule in definitions)
+                    {
+                        if (rule != null)
+                        {
+                            _ruleDefinitions.Add(rule);
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {

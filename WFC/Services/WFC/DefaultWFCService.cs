@@ -28,63 +28,68 @@ public class DefaultWFCService : IWFCService
     /// </summary>
     public async Task<WFCResult> GenerateAsync(WFCSettings settings, CancellationToken token = default)
     {
-        // Create random number generator
-        _random = settings.Seed.HasValue 
-            ? new Random(settings.Seed.Value) 
-            : new Random(Guid.NewGuid().GetHashCode());
-
-        _settings = settings;
-        InitializeGrid();
-        _totalCells = settings.Width * settings.Height;
-        _collapsedCells = 0;
-
-        try
+        try 
         {
-            // Run algorithm in background thread
+            // Create random number generator
+            _random = settings.Seed.HasValue 
+                ? new Random(settings.Seed.Value) 
+                : new Random(Guid.NewGuid().GetHashCode());
+
+            _settings = settings;
+            InitializeGrid();
+            _totalCells = settings.Width * settings.Height;
+            _collapsedCells = 0;
+
+            // Create generation context and add to settings for plugin access
+            _context = new GenerationContext(_settings, _random, _grid);
+            
+            // Инициализируем PluginSettings, если он null
+            if (settings.PluginSettings == null)
+            {
+                settings.PluginSettings = new Dictionary<string, object>();
+            }
+            
+            settings.PluginSettings["context"] = _context;
+
+            // Выполнение операций в Task.Run для асинхронного выполнения
             return await Task.Run(() =>
             {
-                UpdateProgress("Initializing generation...");
-
-                // Create generation context and add to settings for plugin access
-                _context = new GenerationContext(_settings, _random, _grid);
-                _settings.PluginSettings["context"] = _context;
-
-                // Notify plugins before generation
-                foreach (var plugin in _pluginManager.GenerationHookPlugins)
+                try
                 {
-                    plugin.OnBeforeGeneration(_settings);
+                    UpdateProgress("Initializing generation...");
+
+                    // Notify plugins before generation
+                    NotifyPluginsBeforeGeneration();
+
+                    // Generate the grid
+                    UpdateProgress("Running WFC algorithm...");
+                    RunWaveFunction(token);
+
+                    // Get result grid
+                    var resultGrid = GetResultGrid();
+                    
+                    // Apply post-processing from plugins
+                    UpdateProgress("Applying post-processing...");
+                    resultGrid = ApplyPostProcessing(resultGrid);
+
+                    UpdateProgress("Generation completed successfully");
+
+                    return new WFCResult
+                    {
+                        Success = true,
+                        Grid = resultGrid,
+                        ErrorMessage = null
+                    };
                 }
-
-                // Generate the grid
-                UpdateProgress("Running WFC algorithm...");
-                RunWaveFunction(token);
-
-                // Get result grid
-                var resultGrid = GetResultGrid();
-                
-                // Apply post-processing from plugins
-                UpdateProgress("Applying post-processing...");
-                
-                // Let generation hook plugins post-process
-                foreach (var plugin in _pluginManager.GenerationHookPlugins)
+                catch (OperationCanceledException)
                 {
-                    resultGrid = plugin.OnPostProcess(resultGrid, _context);
+                    return new WFCResult { Success = false, ErrorMessage = "Operation canceled" };
                 }
-                
-                // Let dedicated post-processors run
-                foreach (var plugin in _pluginManager.PostProcessorPlugins)
+                catch (Exception ex)
                 {
-                    resultGrid = plugin.ProcessGrid(resultGrid, _context);
+                    Console.WriteLine($"Generation error: {ex}");
+                    return new WFCResult { Success = false, ErrorMessage = $"Error: {ex.Message}" };
                 }
-
-                UpdateProgress("Generation completed successfully");
-
-                return new WFCResult
-                {
-                    Success = true,
-                    Grid = resultGrid,
-                    ErrorMessage = null
-                };
             }, token);
         }
         catch (OperationCanceledException)
@@ -93,6 +98,7 @@ public class DefaultWFCService : IWFCService
         }
         catch (Exception ex)
         {
+            Console.WriteLine($"Generation error: {ex}");
             return new WFCResult { Success = false, ErrorMessage = $"Error: {ex.Message}" };
         }
     }
@@ -106,38 +112,46 @@ public class DefaultWFCService : IWFCService
         int iterations = 0;
         int maxIterations = _settings.Width * _settings.Height * 2; // Safety limit
 
-        while (!complete && iterations < maxIterations)
+        try
         {
-            token.ThrowIfCancellationRequested();
-            iterations++;
-
-            // 1. Find the cell with the minimum entropy
-            var (minX, minY) = FindMinEntropyCell();
-            
-            // If all cells are collapsed, we're done
-            if (minX == -1 || minY == -1)
+            while (!complete && iterations < maxIterations)
             {
-                complete = true;
-                continue;
+                token.ThrowIfCancellationRequested();
+                iterations++;
+
+                // 1. Find the cell with the minimum entropy
+                var (minX, minY) = FindMinEntropyCell();
+                
+                // If all cells are collapsed, we're done
+                if (minX == -1 || minY == -1)
+                {
+                    complete = true;
+                    continue;
+                }
+
+                // 2. Collapse the cell with the minimum entropy
+                CollapseCell(minX, minY);
+
+                // 3. Propagate constraints
+                PropagateConstraints(minX, minY);
+
+                // 4. Update progress
+                if (iterations % 10 == 0 || _collapsedCells == _totalCells)
+                {
+                    UpdateProgress($"Processing: {_collapsedCells}/{_totalCells} cells ({iterations} iterations)");
+                }
             }
 
-            // 2. Collapse the cell with the minimum entropy
-            CollapseCell(minX, minY);
-
-            // 3. Propagate constraints
-            PropagateConstraints(minX, minY);
-
-            // 4. Update progress
-            if (iterations % 10 == 0 || _collapsedCells == _totalCells)
+            if (iterations >= maxIterations)
             {
-                UpdateProgress($"Processing: {_collapsedCells}/{_totalCells} cells ({iterations} iterations)");
+                // Handle possible issues by collapsing remaining cells randomly
+                HandleUncollapsedCells();
             }
         }
-
-        if (iterations >= maxIterations)
+        catch (Exception ex)
         {
-            // Handle possible issues by collapsing remaining cells randomly
-            HandleUncollapsedCells();
+            Console.WriteLine($"Error during wave function collapse: {ex.Message}");
+            throw; // Re-throw to be handled by the caller
         }
     }
 
@@ -201,14 +215,7 @@ public class DefaultWFCService : IWFCService
         var possibleStates = new List<int>(cell.PossibleStates);
         
         // Let plugins modify possible states
-        foreach (var plugin in _pluginManager.GenerationHookPlugins)
-        {
-            var modifiedStates = plugin.OnBeforeCollapse(x, y, possibleStates, _context);
-            if (modifiedStates != null)
-            {
-                possibleStates = modifiedStates.ToList();
-            }
-        }
+        possibleStates = GetPluginModifiedStates(x, y, possibleStates).ToList();
         
         // If no states are possible, handle contradiction
         if (possibleStates.Count == 0)
@@ -225,10 +232,7 @@ public class DefaultWFCService : IWFCService
         _collapsedCells++;
         
         // Notify plugins after collapse
-        foreach (var plugin in _pluginManager.GenerationHookPlugins)
-        {
-            plugin.OnAfterCollapse(x, y, selectedState, _context);
-        }
+        NotifyPluginsAfterCollapse(x, y, selectedState);
     }
 
     /// <summary>
@@ -492,6 +496,9 @@ public class DefaultWFCService : IWFCService
 
     /// <summary>
     /// Update progress
+    ///
+    /// <summary>
+    /// Update progress
     /// </summary>
     private void UpdateProgress(string status)
     {
@@ -510,4 +517,249 @@ public class DefaultWFCService : IWFCService
         _collapsedCells = 0;
         UpdateProgress("Ready");
     }
+    
+    /// <summary>
+    /// Safely notify plugins before generation
+    /// </summary>
+    private void NotifyPluginsBeforeGeneration()
+    {
+        try
+        {
+            var plugins = GetHookPlugins();
+        
+            foreach (var plugin in plugins)
+            {
+                try
+                {
+                    plugin.OnBeforeGeneration(_settings);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error in plugin {plugin.GetType().Name}.OnBeforeGeneration: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error notifying plugins before generation: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Safely notify plugins after collapse
+    /// </summary>
+    private void NotifyPluginsAfterCollapse(int x, int y, int state)
+    {
+        try
+        {
+            var plugins = GetHookPlugins();
+        
+            foreach (var plugin in plugins)
+            {
+                try
+                {
+                    plugin.OnAfterCollapse(x, y, state, _context);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error in plugin {plugin.GetType().Name}.OnAfterCollapse: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error notifying plugins after collapse: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Safely notify plugins after generation
+    /// </summary>
+    private void NotifyPluginsAfterGeneration(Tile[,] grid)
+    {
+        try
+        {
+            var plugins = GetHookPlugins();
+        
+            foreach (var plugin in plugins)
+            {
+                try
+                {
+                    plugin.OnAfterGeneration(grid, _context);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error in plugin {plugin.GetType().Name}.OnAfterGeneration: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error notifying plugins after generation: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Apply post-processing from all plugins
+    /// </summary>
+    private Tile[,] ApplyPostProcessing(Tile[,] grid)
+    {
+        if (grid == null)
+            return grid;
+        
+        var result = grid;
+    
+        try
+        {
+            // Уведомляем плагины после генерации
+            NotifyPluginsAfterGeneration(grid);
+        
+            // Применяем пост-обработку от плагинов генерации
+            var hookPlugins = GetHookPlugins();
+        
+            foreach (var plugin in hookPlugins)
+            {
+                try
+                {
+                    var processed = plugin.OnPostProcess(result, _context);
+                    if (processed != null)
+                    {
+                        result = processed;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error in plugin {plugin.GetType().Name}.OnPostProcess: {ex.Message}");
+                }
+            }
+        
+            // Применяем пост-обработку от специализированных плагинов
+            var postPlugins = GetPostPlugins();
+        
+            foreach (var plugin in postPlugins)
+            {
+                try
+                {
+                    var processed = plugin.ProcessGrid(result, _context);
+                    if (processed != null)
+                    {
+                        result = processed;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error in plugin {plugin.GetType().Name}.ProcessGrid: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in post-processing: {ex.Message}");
+        }
+    
+        return result;
+    }
+    
+    /// <summary>
+    /// Safely get plugin modified states
+    /// </summary>
+private IEnumerable<int> GetPluginModifiedStates(int x, int y, IEnumerable<int> possibleStates)
+{
+    // Если плагин-менеджер не инициализирован или отсутствует, возвращаем исходные состояния
+    if (_pluginManager == null)
+    {
+        return possibleStates;
+    }
+    
+    // Создаем копию состояний для безопасной работы
+    var result = possibleStates.ToList();
+    
+    try
+    {
+        // Безопасно получаем список плагинов
+        var hookPlugins = GetHookPlugins();
+        
+        // Если плагинов нет, возвращаем исходные состояния
+        if (hookPlugins == null || !hookPlugins.Any())
+        {
+            return result;
+        }
+        
+        // Для каждого плагина пытаемся модифицировать состояния
+        foreach (var plugin in hookPlugins)
+        {
+            try
+            {
+                // Пропускаем отключенные плагины (хотя фильтрация должна быть в GetHookPlugins)
+                if (!plugin.Enabled)
+                    continue;
+                    
+                // Получаем модифицированные состояния от плагина
+                var modified = plugin.OnBeforeCollapse(x, y, result, _context);
+                
+                // Если плагин вернул непустой список, обновляем результат
+                if (modified != null && modified.Any())
+                {
+                    result = modified.ToList();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in plugin {plugin.GetType().Name}.OnBeforeCollapse: {ex.Message}");
+                // Продолжаем работу с текущими состояниями
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error getting plugin modified states: {ex.Message}");
+    }
+    
+    return result;
+}
+
+/// <summary>
+/// Получить список плагинов для генерации - безопасный метод для тестирования
+/// </summary>
+private IEnumerable<IGenerationHookPlugin> GetHookPlugins()
+{
+    if (_pluginManager == null)
+    {
+        return Enumerable.Empty<IGenerationHookPlugin>();
+    }
+    
+    try
+    {
+        // Используем ToList() для избежания проблем с LINQ-запросами в тестах
+        return _pluginManager.GenerationHookPlugins.ToList();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error getting hook plugins: {ex.Message}");
+        return Enumerable.Empty<IGenerationHookPlugin>();
+    }
+}
+
+/// <summary>
+/// Получить список плагинов пост-обработки - безопасный метод для тестирования
+/// </summary>
+private IEnumerable<IPostProcessorPlugin> GetPostPlugins()
+{
+    if (_pluginManager == null)
+    {
+        return Enumerable.Empty<IPostProcessorPlugin>();
+    }
+    
+    try
+    {
+        // Используем ToList() для избежания проблем с LINQ-запросами в тестах
+        return _pluginManager.PostProcessorPlugins.ToList();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error getting post plugins: {ex.Message}");
+        return Enumerable.Empty<IPostProcessorPlugin>();
+    }
+}
+
 }

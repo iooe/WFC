@@ -11,12 +11,12 @@ public class BasicQualityModel : IQualityAssessmentModel
         // After neural network deletion, return an empty assessment
         return new QualityAssessment
         {
-            OverallScore = 0f, // Zeroed score
+            OverallScore = 0.5f, // Zeroed score
             DimensionalScores = new Dictionary<string, float>
             {
-                { "Coherence", 0f },
-                { "Aesthetics", 0f },
-                { "Playability", 0f }
+                { "Coherence", 0.5f },
+                { "Aesthetics", 0.5f },
+                { "Playability", 0.5f }
             },
             Feedback = new[] { "Neural network model has been deleted. Train a model to get quality assessment." }
         };

@@ -651,12 +651,19 @@ namespace WFC.ViewModels
         /// <summary>
         /// Update the list of available plugins
         /// </summary>
-        private void UpdatePluginsList()
+        public void UpdatePluginsList()
         {
             AvailablePlugins.Clear();
 
+            // Список ID плагинов, которые нужно скрыть
+            var hiddenPluginIds = new[] { "mock.hook.plugin", "test.plugin" };
+
             foreach (var plugin in _pluginManager.Plugins)
             {
+                // Пропускаем плагины из списка скрытых
+                if (hiddenPluginIds.Contains(plugin.Id))
+                    continue;
+            
                 AvailablePlugins.Add(new PluginViewModel(plugin));
             }
         }
