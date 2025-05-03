@@ -1,9 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using WFC.Models;
 using WFC.Models.NeuralNetwork;
-using WFC.Services.ML;
-using System.IO;
-using System.Threading.Tasks;
 
 namespace WFC.Tests.Models;
 
