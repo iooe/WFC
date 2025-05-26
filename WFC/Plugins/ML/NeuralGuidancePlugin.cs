@@ -60,6 +60,8 @@ namespace WFC.Plugins.ML
         
         public IEnumerable<int> OnBeforeCollapse(int x, int y, IEnumerable<int> possibleStates, GenerationContext context)
         {
+            return possibleStates; // Default behavior, no neural guidance yet
+
             // Every N collapses, evaluate current state and adjust weights
             if (++_generationCounter % _evaluationFrequency == 0 && context.Grid != null)
             {
